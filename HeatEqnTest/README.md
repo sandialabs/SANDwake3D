@@ -10,14 +10,16 @@ Discretizing the equation using ADI-scheme.  For the y-derivative part, implicit
 
 $$
 \frac{u_{ij}^{n+1/2} - u_{ij}^n}{\Delta x/2} = 
-\alpha \frac{D_y^2 u_{ij}^{n+1/2} + D_z^2 u_{ij}^n}{(\Delta z)^2}
+\alpha \left[ \frac{D_y^2 u_{ij}^{n+1/2}}{(\Delta y)^2} + \frac{D_z^2 u_{ij}^n}{(\Delta z)^2}
+\right]
 $$
 
 Then do the z-derivative part implicitly to advance $u_{ij}^{n+1/2}$ to $u_{ij}^{n+1}$
 
 $$
 \frac{u_{ij}^{n+1} - u_{ij}^{n+1/2}}{\Delta x/2} = 
-\alpha \frac{D_y^2 u_{ij}^{n+1/2} + D_z^2 u_{ij}^{n+1}}{(\Delta y)^2}
+\alpha \left[ \frac{D_y^2 u_{ij}^{n+1/2}}{(\Delta y)^2} + \frac{D_z^2 u_{ij}^{n+1}}{(\Delta z)^2}
+\right]
 $$
 
 Here the spatial $y$ & $z$ discretization schemes are
@@ -34,14 +36,14 @@ $$
 Rearranging the equations, for the first sweep from $n$ to $n+1/2$ we have 
 
 $$
-\left[ \frac{(\Delta z)^2}{\alpha} - \frac{\Delta x}{2} D_y^2 \right] u_{ij}^{n+1/2} = 
+\left[ \frac{(\Delta z)^2}{\alpha} - \frac{\Delta x}{2} \left(\frac{\Delta z}{\Delta y}\right)^2 D_y^2 \right] u_{ij}^{n+1/2} = 
 \left[ \frac{(\Delta z)^2}{\alpha} + \frac{\Delta x}{2} D_z^2 \right] u_{ij}^{n}
 $$
 
 which is a tridiagonal system over the $i$ points for every $j$.  Then for the second sweep from $n+1/2$ to $n+1$ we have 
 
 $$
-\left[ \frac{(\Delta y)^2}{\alpha} - \frac{\Delta x}{2} D_z^2 \right] u_{ij}^{n+1} = 
+\left[ \frac{(\Delta y)^2}{\alpha} - \frac{\Delta x}{2} \left(\frac{\Delta y}{\Delta z}\right)^2 D_z^2 \right] u_{ij}^{n+1} = 
 \left[ \frac{(\Delta y)^2}{\alpha} + \frac{\Delta x}{2} D_y^2 \right] u_{ij}^{n+1/2}
 $$
 

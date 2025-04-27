@@ -79,7 +79,7 @@ def advanceU(u, dx, dy, dz, alpha, bc_ylo, bc_yhi, bc_zlo, bc_zhi):
     LHS_nhalf = np.zeros((Ny,3))
     # == Set up the LHS matrices ==
     for i in range(1,Ny-1):
-        LHS_nhalf[i,:] = Irow*(dz*dz/alpha) - 0.5*dx*D2cen
+        LHS_nhalf[i,:] = Irow*(dz*dz/alpha) - 0.5*dx*D2cen*(dz/dy)**2
 
     # Apply BC's
     row_lo, dentry_lo = applyBC(bc_zlo, 'lower', dz)
@@ -100,7 +100,7 @@ def advanceU(u, dx, dy, dz, alpha, bc_ylo, bc_yhi, bc_zlo, bc_zhi):
     LHS_np1 = np.zeros((Nz,3))
     # == Set up the LHS matrices ==
     for i in range(1,Nz-1):
-        LHS_np1[i,:] = Irow*(dy*dy/alpha) - 0.5*dx*D2cen
+        LHS_np1[i,:] = Irow*(dy*dy/alpha) - 0.5*dx*D2cen*(dy/dz)**2
         
     # Apply BC's
     row_lo, dentry_lo = applyBC(bc_ylo, 'lower', dy)
