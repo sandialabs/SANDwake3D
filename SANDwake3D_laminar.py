@@ -35,36 +35,60 @@ def D2z(u, i, j):
 
 # ==================================
 
-def getTilde(phi_ip1, phi_i):
+def getTilde(phi_np1, phi_n):
     """
     Get the averaged velocities for the convective term
     """
-    u_ip1, u_i = phi_ip1['u'], phi_i['u']
-    v_ip1, v_i = phi_ip1['v'], phi_i['v']
-    w_ip1, w_i = phi_ip1['w'], phi_i['w']
-    u_tilde = 0.5*(u_ip1 + u_i)
-    v_tilde = 0.5*(v_ip1 + v_i)
-    w_tilde = 0.5*(w_ip1 + w_i)
+    u_np1, u_n = phi_np1['u'], phi_n['u']
+    v_np1, v_n = phi_np1['v'], phi_n['v']
+    w_np1, w_n = phi_np1['w'], phi_n['w']
+    u_tilde = 0.5*(u_np1 + u_n)
+    v_tilde = 0.5*(v_np1 + v_n)
+    w_tilde = 0.5*(w_np1 + w_n)
     return u_tilde, v_tilde, w_tilde
 
-def RHS_u_nhalf(phi_ip1, phi_i, dx, dy, dz, params):
+def RHS_u_nhalf(phi_np1, phi_n, dx, dy, dz, params):
     """
     Go from n to n+1/2 for the u-momentum equation
     
     """
-    u_ip1, u_i = phi_ip1['u'], phi_i['u']
-    v_ip1, v_i = phi_ip1['v'], phi_i['v']
-    w_ip1, w_i = phi_ip1['w'], phi_i['w']
-    u_tilde, v_tilde, w_tilde = getTilde(phi_ip1, phi_i)
+    u_np1, u_n = phi_np1['u'], phi_n['u']
+    v_np1, v_n = phi_np1['v'], phi_n['v']
+    w_np1, w_n = phi_np1['w'], phi_n['w']
+    u_tilde, v_tilde, w_tilde = getTilde(phi_np1, phi_n)
 
     nu = params['nu']
     
-    N  = u_i.shape
+    N  = u_n.shape
     Ny = N[0]
     Nz = N[1]
     RHS = np.zeros((Ny, Nz))
+    # These loops can be optimized
     for i in range(1,Ny-1):
         for j in range(1,Nz-1):
-            RHS[i,j] = 0.0
-#            RHS[i,j] = delta*delta/alpha*u[i,j] + 0.5*dx*(u[i,j+1] -2.0*u[i,j] + u[i,j-1])
+            RHS[i,j] = u_tilde[i,j]*u_n[i,j]/(0.5*dx) - w_tilde[i,j]/dz*D1z(u_n, i, j) + nu*D2z(u_n, i, j)/(dz*dz)
+    return RHS
+
+def RHS_u_np1(phi_np1, phi_nhalf, phi_n, dx, dy, dz, params):
+    """
+    """
+    u_nhalf = phi_nhalf['u']
+    v_nhalf = phi_nhalf['v']
+    w_nhalf = phi_nhalf['w']
+
+    u_np1, u_n = phi_np1['u'], phi_n['u']
+    v_np1, v_n = phi_np1['v'], phi_n['v']
+    w_np1, w_n = phi_np1['w'], phi_n['w']
+    u_tilde, v_tilde, w_tilde = getTilde(phi_np1, phi_n)
+
+    nu = params['nu']
+    
+    N  = u_n.shape
+    Ny = N[0]
+    Nz = N[1]
+    RHS = np.zeros((Ny, Nz))
+    # These loops can be optimized
+    for i in range(1,Ny-1):
+        for j in range(1,Nz-1):
+            RHS[i,j] = u_tilde[i,j]*u_nhalf[i,j]/(0.5*dx) - v_tilde[i,j]/dy*D1y(u_nhalf, i, j) + nu*D2y(u_nhalf, i, j)/(dy*dy)
     return RHS
