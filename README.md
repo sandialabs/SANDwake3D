@@ -36,72 +36,36 @@ $$
 #### U-momentum first step
 
 $$
-\tilde{u} \frac{u_{ij}^{n+1/2} - u_{ij}^n}{\Delta x/2} 
-+ \tilde{v} \frac{D_y u_{ij}^{n+1/2}}{\Delta y}  
-+ \tilde{w} \frac{D_z u_{ij}^n }{\Delta z} = 
-\nu \left[ 
-\frac{D_y^2 u_{ij}^{n+1/2}}{(\Delta y)^2} + \frac{D_z^2 u_{ij}^n}{(\Delta z)^2}
-\right]
+\tilde{u} \frac{u_{ij}^{n+1/2} - u_{ij}^n}{\Delta x/2} + \tilde{v} \frac{D_y u_{ij}^{n+1/2}}{\Delta y}  + \tilde{w} \frac{D_z u_{ij}^n }{\Delta z} = 
+\nu \left[ \frac{D_y^2 u_{ij}^{n+1/2}}{(\Delta y)^2} + \frac{D_z^2 u_{ij}^n}{(\Delta z)^2} \right]
 $$
 
 $$
-\tilde{u} \frac{u_{ij}^{n+1/2}}{\Delta x/2} 
-+ \tilde{v} \frac{D_y u_{ij}^{n+1/2}}{\Delta y} 
-+ \nu \frac{D_y^2 u_{ij}^{n+1/2} }{(\Delta y)^2}
-=   
-\tilde{u} \frac{u_{ij}^n}{\Delta x/2}
-- \tilde{w} \frac{D_z u_{ij}^n }{\Delta z} 
-+ \nu \frac{D_z^2 u_{ij}^n}{(\Delta z)^2}
+\tilde{u} \frac{u_{ij}^{n+1/2}}{\Delta x/2} + \tilde{v} \frac{D_y u_{ij}^{n+1/2}}{\Delta y} + \nu \frac{D_y^2 u_{ij}^{n+1/2} }{(\Delta y)^2} =   
+\tilde{u} \frac{u_{ij}^n}{\Delta x/2} - \tilde{w} \frac{D_z u_{ij}^n }{\Delta z} + \nu \frac{D_z^2 u_{ij}^n}{(\Delta z)^2}
 $$
 
 Reorganizing
 
 $$ \left[
-\frac{ \tilde{u}}{\Delta x/2} 
-+ \tilde{v} \frac{D_y}{\Delta y} 
-+ \nu \frac{D_y^2 }{(\Delta y)^2}
-\right] u_{ij}^{n+1/2}
-=
-\left[
- \frac{ \tilde{u} }{\Delta x/2}
-- \tilde{w} \frac{D_z }{\Delta z} 
-+ \nu \frac{D_z^2}{(\Delta z)^2}
-\right] u_{ij}^n
+\frac{ \tilde{u}}{\Delta x/2} + \tilde{v} \frac{D_y}{\Delta y} + \nu \frac{D_y^2 }{(\Delta y)^2} \right] u_{ij}^{n+1/2} =
+\left[  \frac{ \tilde{u} }{\Delta x/2} - \tilde{w} \frac{D_z }{\Delta z} + \nu \frac{D_z^2}{(\Delta z)^2} \right] u_{ij}^n
 $$
 
 #### U-momentum second step
 
 $$
-\tilde{u} \frac{u_{ij}^{n+1} - u_{ij}^{n+1/2}}{\Delta x/2} 
-+ \tilde{v} \frac{D_y u_{ij}^{n+1/2}}{\Delta y} 
-+ \tilde{w} \frac{D_z u_{ij}^{n+1} }{\Delta z} 
-= 
-\nu \left[ 
-\frac{D_y^2 u_{ij}^{n+1/2}}{(\Delta y)^2} + \frac{D_z^2 u_{ij}^{n+1}}{(\Delta z)^2}
-\right]
+\tilde{u} \frac{u_{ij}^{n+1} - u_{ij}^{n+1/2}}{\Delta x/2} + \tilde{v} \frac{D_y u_{ij}^{n+1/2}}{\Delta y} + \tilde{w} \frac{D_z u_{ij}^{n+1} }{\Delta z} = 
+\nu \left[ \frac{D_y^2 u_{ij}^{n+1/2}}{(\Delta y)^2} + \frac{D_z^2 u_{ij}^{n+1}}{(\Delta z)^2} \right]
 $$
 
 $$
-\tilde{u} \frac{u_{ij}^{n+1}}{\Delta x/2} 
-+ \tilde{w} \frac{D_z u_{ij}^{n+1} }{\Delta z} 
-- \nu \frac{D_z^2 u_{ij}^{n+1}}{(\Delta z)^2}
-=
-\tilde{u} \frac{u_{ij}^{n+1/2}}{\Delta x/2} 
-- \tilde{v} \frac{D_y u_{ij}^{n+1/2}}{\Delta y} 
-+ \nu \frac{D_y^2 u_{ij}^{n+1/2}}{(\Delta y)^2}
+\tilde{u} \frac{u_{ij}^{n+1}}{\Delta x/2} + \tilde{w} \frac{D_z u_{ij}^{n+1} }{\Delta z} - \nu \frac{D_z^2 u_{ij}^{n+1}}{(\Delta z)^2}=
+\tilde{u} \frac{u_{ij}^{n+1/2}}{\Delta x/2} - \tilde{v} \frac{D_y u_{ij}^{n+1/2}}{\Delta y} + \nu \frac{D_y^2 u_{ij}^{n+1/2}}{(\Delta y)^2}
 $$
 
 Reorganizing
 
-$$ \left[
-\frac{\tilde{u}}{\Delta x/2} 
-+ \tilde{w} \frac{D_z }{\Delta z} 
-- \nu \frac{D_z^2 }{(\Delta z)^2}
-\right] u_{ij}^{n+1}
-=
-\left[
-\frac{\tilde{u}}{\Delta x/2} 
-- \tilde{v} \frac{D_y }{\Delta y} 
-+ \nu \frac{D_y^2 }{(\Delta y)^2}
-\right] u_{ij}^{n+1/2}
+$$ \left[\frac{\tilde{u}}{\Delta x/2} + \tilde{w} \frac{D_z }{\Delta z} - \nu \frac{D_z^2 }{(\Delta z)^2} \right] u_{ij}^{n+1}=
+\left[ \frac{\tilde{u}}{\Delta x/2} - \tilde{v} \frac{D_y }{\Delta y} + \nu \frac{D_y^2 }{(\Delta y)^2} \right] u_{ij}^{n+1/2}
 $$
