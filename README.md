@@ -67,8 +67,8 @@ $$
 Reorganizing
 
 $$ \left[
-\frac{ \tilde{u}}{\Delta x/2} + \tilde{v} \frac{D_y}{\Delta y} + \nu \frac{D_y^2 }{(\Delta y)^2} \right] u_{ij}^{n+1/2} =
-\left[  \frac{ \tilde{u} }{\Delta x/2} - \tilde{w} \frac{D_z }{\Delta z} + \nu \frac{D_z^2}{(\Delta z)^2} \right] u_{ij}^n
+\frac{ \tilde{u}_{ij}}{\Delta x/2} + \tilde{v}_{ij} \frac{D_y}{\Delta y} + \nu \frac{D_y^2 }{(\Delta y)^2} \right] u_{ij}^{n+1/2} =
+\left[  \frac{ \tilde{u}_{ij} }{\Delta x/2} - \tilde{w}_{ij} \frac{D_z }{\Delta z} + \nu \frac{D_z^2}{(\Delta z)^2} \right] u_{ij}^n
 $$
 
 #### U-momentum second step
@@ -85,8 +85,8 @@ $$
 
 Reorganizing
 
-$$ \left[\frac{\tilde{u}}{\Delta x/2} + \tilde{w} \frac{D_z }{\Delta z} - \nu \frac{D_z^2 }{(\Delta z)^2} \right] u_{ij}^{n+1}=
-\left[ \frac{\tilde{u}}{\Delta x/2} - \tilde{v} \frac{D_y }{\Delta y} + \nu \frac{D_y^2 }{(\Delta y)^2} \right] u_{ij}^{n+1/2}
+$$ \left[\frac{\tilde{u}_{ij}}{\Delta x/2} + \tilde{w}_{ij} \frac{D_z }{\Delta z} - \nu \frac{D_z^2 }{(\Delta z)^2} \right] u_{ij}^{n+1}=
+\left[ \frac{\tilde{u}_{ij}}{\Delta x/2} - \tilde{v}_{ij} \frac{D_y }{\Delta y} + \nu \frac{D_y^2 }{(\Delta y)^2} \right] u_{ij}^{n+1/2}
 $$
 
 #### W-momentum first step
@@ -99,8 +99,8 @@ $$
 Reorganizing
 
 $$ \left[
-\frac{ \tilde{u}}{\Delta x/2} + \tilde{v} \frac{D_y}{\Delta y} + \nu \frac{D_y^2 }{(\Delta y)^2} \right] w_{ij}^{n+1/2} =
-\left[  \frac{ \tilde{u} }{\Delta x/2} - \tilde{w} \frac{D_z }{\Delta z} + \nu \frac{D_z^2}{(\Delta z)^2} \right] w_{ij}^n
+\frac{ \tilde{u}_{ij}}{\Delta x/2} + \tilde{v}_{ij} \frac{D_y}{\Delta y} + \nu \frac{D_y^2 }{(\Delta y)^2} \right] w_{ij}^{n+1/2} =
+\left[  \frac{ \tilde{u}_{ij} }{\Delta x/2} - \tilde{w}_{ij} \frac{D_z }{\Delta z} + \nu \frac{D_z^2}{(\Delta z)^2} \right] w_{ij}^n
 $$
 
 #### W-momentum second step
@@ -126,7 +126,7 @@ $$
 Reorganizing
 
 $$
-D_y v_{ij}^{n+1} = -\Delta y \left[ \frac{u_{ij}^{n+1} + u_{ij}^{n}}{\Delta x} + \frac{D_z w_{ij}^{n+1}}{\Delta z}  \right]
+D_y v_{ij}^{n+1} = -\Delta y \left[ \frac{u_{ij}^{n+1} - u_{ij}^{n}}{\Delta x} + \frac{D_z w_{ij}^{n+1}}{\Delta z}  \right]
 $$
 
 ### Solution algorithm
