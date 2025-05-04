@@ -22,10 +22,10 @@ def solvetridiag(matrow, b, verbose=False):
 # Set up differentiation operators on the RHS
 # ==================================
 def D1y(u, i, j):
-    return u[i+1, j] - u[i-1, j]
+    return 0.5*(u[i+1, j] - u[i-1, j])
 
 def D1z(u, i, j):
-    return u[i, j+1] - u[i, j-1]
+    return 0.5*(u[i, j+1] - u[i, j-1])
 
 def D2y(u, i, j):
     return u[i+1, j] - 2.0*u[i, j] + u[i-1, j]
@@ -122,7 +122,7 @@ def advanceU(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc_z
     # --- differentiation stencils ---
     #                  j-1  j  j+1
     Irow   = np.array([0,   1,  0])
-    Dcen   = np.array([-1,  0,  1])
+    Dcen   = np.array([-1,  0,  1])*0.5
     D2cen  = np.array([1,  -2,  1])
     # -------------------------------
 
@@ -175,4 +175,57 @@ def advanceW(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc_z
     N  = u_tilde.shape
     Ny = N[0]
     Nz = N[1]
-    return
+    return np.zeros((Ny, Nz))
+
+def advanceMass(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc_zhi):
+    """
+    Advance the continuity equation one full step
+    return v^(n+1)
+    """
+    u_np1, u_n = phi_np1old['u'], phi_n['u']
+    v_np1, v_n = phi_np1old['v'], phi_n['v']
+    w_np1, w_n = phi_np1old['w'], phi_n['w']
+
+    N  = u_n.shape
+    Ny = N[0]
+    Nz = N[1]
+
+    # --- differentiation stencils ---
+    #                  j-1  j  j+1
+    Irow   = np.array([0,   1,  0])
+    Dcen   = np.array([-1,  0,  1])*0.5
+    D2cen  = np.array([1,  -2,  1])
+    # -------------------------------
+
+    v_np1   = np.zeros((Ny, Nz))
+
+    Dz_w    = np.zeros((Ny, Nz))
+    # Note: This loop can definitely be optimized
+    for i in range(Ny):
+        for j in range(Nz):
+            if j==0:
+                Dz_w[i,j] = (Dz_w[i,j+1] - Dz_w[i,j])/dz
+            elif j==Nz-1:
+                Dz_w[i,j] = (Dz_w[i,j] - Dz_w[i,j-1])/dz
+            else:
+                Dz_w[i,j] = D1z(w_np1, i, j) #0.5*(w[i,j+1] - w[i,j-1])/dz
+    RHS     = -dy*(u_np1 - u_n)/dx - dy*Dz_w
+
+    # == Set up the LHS matrices ==
+    for j in range(Nz):
+        LHS = np.zeros((Ny,3))
+        # == Set up the LHS matrices ==
+        for i in range(1,Ny-1):
+            LHS[i,:] = Dcen
+        # Apply BC's
+        row_lo, dentry_lo = applyBC(bc_ylo, 'lower', dy)
+        row_hi, dentry_hi = applyBC(bc_yhi, 'upper', dy)
+        LHS[0,:]  = row_lo
+        LHS[-1,:] = row_hi
+        RHS[0,:]  = dentry_lo
+        RHS[-1,:] = dentry_hi
+        # Solve the triadiagonal system
+        v_np1[:,j] = solvetridiag(LHS, RHS[:,j])
+    
+    
+    return v_np1

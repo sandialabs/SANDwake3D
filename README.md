@@ -31,7 +31,7 @@ $$
 Use the following discrete operators:
 
 $$
-D_y u_{ij} = u_{i+1,j} - u_{i-1,j}
+D_y u_{ij} = \frac{u_{i+1,j} - u_{i-1,j}}{2}
 $$
 
 $$
@@ -39,7 +39,7 @@ D_y^2 u_{ij} = u_{i+1,j} - 2 u_{i,j} + u_{i-1,j}
 $$
 
 $$
-D_z u_{ij} = u_{i,j+1} -  u_{i,j-1}
+D_z u_{ij} = \frac{u_{i,j+1} -  u_{i,j-1}}{2}
 $$
 
 $$
