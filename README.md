@@ -54,14 +54,14 @@ $$
 $$
 
 $$
-\tilde{u} \frac{u_{ij}^{n+1/2}}{\Delta x/2} + \tilde{v} \frac{D_y u_{ij}^{n+1/2}}{\Delta y} + \nu \frac{D_y^2 u_{ij}^{n+1/2} }{(\Delta y)^2} =   
+\tilde{u} \frac{u_{ij}^{n+1/2}}{\Delta x/2} + \tilde{v} \frac{D_y u_{ij}^{n+1/2}}{\Delta y} - \nu \frac{D_y^2 u_{ij}^{n+1/2} }{(\Delta y)^2} =   
 \tilde{u} \frac{u_{ij}^n}{\Delta x/2} - \tilde{w} \frac{D_z u_{ij}^n }{\Delta z} + \nu \frac{D_z^2 u_{ij}^n}{(\Delta z)^2} + f_x^{n}
 $$
 
 Reorganizing
 
 $$ 
-\left[\frac{ \tilde{u}}{\Delta x/2} + \tilde{v} \frac{D_y}{\Delta y} + \nu \frac{D_y^2 }{(\Delta y)^2} \right] u_{ij}^{n+1/2} =
+\left[\frac{ \tilde{u}}{\Delta x/2} + \tilde{v} \frac{D_y}{\Delta y} - \nu \frac{D_y^2 }{(\Delta y)^2} \right] u_{ij}^{n+1/2} =
 \left[  \frac{ \tilde{u} }{\Delta x/2} - \tilde{w} \frac{D_z }{\Delta z} + \nu \frac{D_z^2}{(\Delta z)^2} \right] u_{ij}^n + f_x^n
 $$
 
@@ -94,7 +94,7 @@ $$
 Reorganizing
 
 $$
-\left[ \frac{ \tilde{u}}{\Delta x/2} + \tilde{v}\frac{D_y}{\Delta y} + \nu \frac{D_y^2 }{(\Delta y)^2} \right] w_{ij}^{n+1/2} =
+\left[ \frac{ \tilde{u}}{\Delta x/2} + \tilde{v}\frac{D_y}{\Delta y} - \nu \frac{D_y^2 }{(\Delta y)^2} \right] w_{ij}^{n+1/2} =
 \left[\frac{\tilde{u}}{\Delta x/2} - \tilde{w} \frac{D_z }{\Delta z} + \nu \frac{D_z^2}{(\Delta z)^2} \right] w_{ij}^n
 $$
 

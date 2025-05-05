@@ -168,7 +168,7 @@ def advanceU(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc_z
         LHS_nhalf = np.zeros((Ny,3))
         # == Set up the LHS matrices ==
         for i in range(1,Ny-1):
-            LHS_nhalf[i,:] = u_tilde[i,j]/(0.5*dx)*Irow + v_tilde[i,j]*Dcen/dy + nu*D2cen/(dy*dy)
+            LHS_nhalf[i,:] = u_tilde[i,j]/(0.5*dx)*Irow + v_tilde[i,j]*Dcen/dy - nu*D2cen/(dy*dy)
         # Apply BC's
         row_lo, dentry_lo = applyBC(bc_ylo, 'lower', dy)
         row_hi, dentry_hi = applyBC(bc_yhi, 'upper', dy)
@@ -180,7 +180,7 @@ def advanceU(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc_z
         # Solve the triadiagonal system
         u_nhalf[:,j] = solvetridiag(LHS_nhalf, RHS_nhalf[:,j])
 
-    print(f'u_nhalf = ',u_nhalf)
+    #print(f'u_nhalf = ',u_nhalf)
     # Second sweep: n+1/2 -> n+1
     # -----------------------
     u_np1   = np.zeros((Ny, Nz))
@@ -189,18 +189,22 @@ def advanceU(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc_z
     for i in range(Ny):
         LHS_np1 = np.zeros((Nz,3))
         for j in range(1,Nz-1):
-            LHS_np1[j,:] = u_tilde[i,j]/(0.5*dx)*Irow + w_tilde[i,j]*Dcen/dz + nu*D2cen/(dz*dz) 
+            LHS_np1[j,:] = u_tilde[i,j]/(0.5*dx)*Irow + w_tilde[i,j]*Dcen/dz - nu*D2cen/(dz*dz) 
         # Apply BC's
         row_lo, dentry_lo = applyBC(bc_zlo, 'lower', dz)
         row_hi, dentry_hi = applyBC(bc_zhi, 'upper', dz)
+        if i==0:
+            row_lo, dentry_lo = applyBC({'type':'dirichlet', 'value':u_tilde[i,0]}, 'lower', dz)
+        if i==Ny-1:
+            row_hi, dentry_hi = applyBC({'type':'dirichlet', 'value':u_tilde[i,-1]}, 'lower', dz)            
         LHS_np1[0,:]  = row_lo
         LHS_np1[-1,:] = row_hi
         RHS_np1[:,0]  = dentry_lo
         RHS_np1[:,-1] = dentry_hi
-        #print(f'i = {i}\nRHS_np1 = ',RHS_nhalf[i,:], '\nLHS = ', LHS_np1)                
+        #print(f'i = {i}\nRHS_np1 = ',RHS_np1[i,:], '\nLHS = ', LHS_np1)                
         # Solve the triadiagonal system
         u_np1[i,:] = solvetridiag(LHS_np1, RHS_np1[i,:], verbose=False)
-    print('u_np1 = ',u_np1)
+        #print('u_np1 = ',u_np1[i,:])
     return u_np1
 
 def advanceW(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc_zhi):
