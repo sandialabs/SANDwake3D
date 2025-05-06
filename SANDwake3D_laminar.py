@@ -316,6 +316,38 @@ def advanceSystem(phi_n, dx, dy, dz, params, allbcs, eqnsys, maxiter=100,
     # -->TODO!
     return phi_n1
 
+def marchSystem(phi_init, xvec, dy, dz, params, allbcs, eqnsys, maxiter=100,
+                tol=1.0E-6, verbose=False):
+    # Get the list of variables
+    varlist = [v for v, g in eqnsys.items()]
+    # Get the shape of the vectors
+    N  = phi_init[varlist[0]].shape
+    Ny = N[0]
+    Nz = N[1]
+    Nx = len(xvec)
+    
+    # Populate the storage dict
+    phi = {}
+    for v in varlist:
+        phi[v] = np.zeros((Nx, Ny, Nz))
+    # Initialize phi with phi_init
+    for v in varlist:
+        phi[v][0,:,:] = phi_init[v]
+
+    xprev = xvec[0]
+    phiprev = phi_init
+    # Start the march
+    for xi, x in enumerate(xvec[1:]):
+        if verbose:
+            print('x = %f'%x)
+        dx = x-xprev
+        phinext = advanceSystem(phiprev, dx, dy, dz, params, allbcs, eqnsys, verbose=verbose, maxiter=maxiter, tol=tol)
+        for v in varlist:
+            phi[v][xi+1,:,:] = phinext[v]
+        phiprev = phinext.copy()
+    return phi
+
+########################################################
 # Define the laminar equation system
 laminar_eqns=OrderedDict()
 laminar_eqns['u'] = advanceU

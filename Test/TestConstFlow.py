@@ -89,16 +89,22 @@ phi1 = SANDwake3D.advanceSystem(phiinit, dx, dy, dz, params, allbc, SANDwake3D.l
 # In[7]:
 
 
-print(phi1['u'])
+phi = SANDwake3D.marchSystem(phiinit, [0.0, 1.0, 2.0], dy, dz, params, allbc, SANDwake3D.laminar_eqns, verbose=True, maxiter=2)
 
 
 # In[8]:
 
 
-err = np.sum(phi1['u'] - uval*np.ones((Ny,Nz)))
-print('Error = %e'%err)
+print(phi['u'][-1,:,:])
 
 
 # In[9]:
+
+
+err = np.sum(np.abs(phi['u'][-1,:,:]-phi['u'][0,:,:]))
+print('Error = %e'%err)
+
+
+# In[10]:
 
 

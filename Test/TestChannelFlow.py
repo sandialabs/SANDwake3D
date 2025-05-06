@@ -96,6 +96,12 @@ params['fx_const']=2.0*params['nu']
 phi1 = SANDwake3D.advanceSystem(phiinit, dx, dy, dz, params, allbc, SANDwake3D.laminar_eqns, verbose=True, maxiter=2)
 
 
+# In[ ]:
+
+
+phi = SANDwake3D.marchSystem(phiinit, xvec, dy, dz, params, allbc, SANDwake3D.laminar_eqns, verbose=True, maxiter=2)
+
+
 # In[8]:
 
 
