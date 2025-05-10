@@ -43,7 +43,7 @@ $$
 Also in the convective terms, use the averaged velocities
 
 $$
-\tilde{u} = \frac{u_{ij}^{n+1} + u_{ij}^n}{2}
+\tilde{u} = \tilde{u}\_{ij} = \frac{u\_{ij}^{n+1} + u\_{ij}^n}{2}
 $$
 
 #### U-momentum first step
@@ -60,9 +60,9 @@ $$
 
 Reorganizing
 
-$$ \left[
-\frac{ \tilde{u}_{ij}}{\Delta x/2} + \tilde{v}_{ij} \frac{D_y}{\Delta y} + \nu \frac{D_y^2 }{(\Delta y)^2} \right] u_{ij}^{n+1/2} =
-\left[  \frac{ \tilde{u}_{ij} }{\Delta x/2} - \tilde{w}_{ij} \frac{D_z }{\Delta z} + \nu \frac{D_z^2}{(\Delta z)^2} \right] u_{ij}^n + f_x^n
+$$ 
+\left[\frac{ \tilde{u}}{\Delta x/2} + \tilde{v} \frac{D_y}{\Delta y} + \nu \frac{D_y^2 }{(\Delta y)^2} \right] u_{ij}^{n+1/2} =
+\left[  \frac{ \tilde{u} }{\Delta x/2} - \tilde{w} \frac{D_z }{\Delta z} + \nu \frac{D_z^2}{(\Delta z)^2} \right] u_{ij}^n + f_x^n
 $$
 
 #### U-momentum second step
@@ -79,8 +79,9 @@ $$
 
 Reorganizing
 
-$$ \left[\frac{\tilde{u}_{ij}}{\Delta x/2} + \tilde{w}_{ij} \frac{D_z }{\Delta z} - \nu \frac{D_z^2 }{(\Delta z)^2} \right] u_{ij}^{n+1}=
-\left[ \frac{\tilde{u}_{ij}}{\Delta x/2} - \tilde{v}_{ij} \frac{D_y }{\Delta y} + \nu \frac{D_y^2 }{(\Delta y)^2} \right] u_{ij}^{n+1/2} + f_x^{n+1/2}
+$$ 
+\left[\frac{\tilde{u}}{\Delta x/2} + \tilde{w} \frac{D_z }{\Delta z} - \nu \frac{D_z^2 }{(\Delta z)^2} \right] u_{ij}^{n+1}=
+\left[ \frac{\tilde{u}}{\Delta x/2} - \tilde{v} \frac{D_y }{\Delta y} + \nu \frac{D_y^2 }{(\Delta y)^2} \right] u_{ij}^{n+1/2} + f_x^{n+1/2}
 $$
 
 #### W-momentum first step
@@ -92,9 +93,9 @@ $$
 
 Reorganizing
 
-$$ \left[
-\frac{ \tilde{u}_{ij}}{\Delta x/2} + \tilde{v}_{ij} \frac{D_y}{\Delta y} + \nu \frac{D_y^2 }{(\Delta y)^2} \right] w_{ij}^{n+1/2} =
-\left[  \frac{ \tilde{u}_{ij} }{\Delta x/2} - \tilde{w}_{ij} \frac{D_z }{\Delta z} + \nu \frac{D_z^2}{(\Delta z)^2} \right] w_{ij}^n
+$$
+\left[ \frac{ \tilde{u}}{\Delta x/2} + \tilde{v}\frac{D_y}{\Delta y} + \nu \frac{D_y^2 }{(\Delta y)^2} \right] w_{ij}^{n+1/2} =
+\left[\frac{\tilde{u}}{\Delta x/2} - \tilde{w} \frac{D_z }{\Delta z} + \nu \frac{D_z^2}{(\Delta z)^2} \right] w_{ij}^n
 $$
 
 #### W-momentum second step
@@ -106,7 +107,8 @@ $$
 
 Reorganizing
 
-$$ \left[\frac{\tilde{u}}{\Delta x/2} + \tilde{w} \frac{D_z }{\Delta z} - \nu \frac{D_z^2 }{(\Delta z)^2} \right] w_{ij}^{n+1}=
+$$ 
+\left[\frac{\tilde{u}}{\Delta x/2} + \tilde{w} \frac{D_z }{\Delta z} - \nu \frac{D_z^2 }{(\Delta z)^2} \right] w_{ij}^{n+1}=
 \left[ \frac{\tilde{u}}{\Delta x/2} - \tilde{v} \frac{D_y }{\Delta y} + \nu \frac{D_y^2 }{(\Delta y)^2} \right] w_{ij}^{n+1/2}
 $$
 
