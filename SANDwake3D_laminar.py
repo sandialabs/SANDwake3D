@@ -246,12 +246,12 @@ def advanceMass(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, b
     for i in range(Ny):
         for j in range(Nz):
             if j==0:
-                Dz_w[i,j] = (Dz_w[i,j+1] - Dz_w[i,j])/dz
+                Dz_w[i,j] = (w_np1[i,j+1] - w_np1[i,j])/dz
             elif j==Nz-1:
-                Dz_w[i,j] = (Dz_w[i,j] - Dz_w[i,j-1])/dz
+                Dz_w[i,j] = (w_np1[i,j] - w_np1[i,j-1])/dz
             else:
-                Dz_w[i,j] = D1z(w_np1, i, j) #0.5*(w[i,j+1] - w[i,j-1])/dz
-    RHS     = -dy*(u_np1 - u_n)/dx - dy*Dz_w
+                Dz_w[i,j] = D1z(w_np1, i, j)/dz #0.5*(w[i,j+1] - w[i,j-1])/dz
+    RHS     = -dy*(u_np1 - u_n)/(dx) - dy*Dz_w
 
     # == Set up the LHS matrices ==
     for j in range(Nz):
@@ -272,7 +272,7 @@ def advanceMass(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, b
     #     RHS[-1,:] = dentry_hi
     #     # Solve the triadiagonal system
     #     v_np1[:,j] = solvetridiag(LHS, RHS[:,j])
-        
+
     return v_np1
 
 def convergetest(phi_new, phi_old, tol):
@@ -299,7 +299,7 @@ def advanceSystem(phi_n, dx, dy, dz, params, allbcs, eqnsys, maxiter=100,
     phi_n1 = copy.deepcopy(phi_n)
 
     for k in range(maxiter):
-        phi_next = {}
+        phi_next = OrderedDict()
         # Loop over all variables
         for v in varlist:
             bcvar = allbcs[v]
@@ -338,13 +338,14 @@ def marchSystem(phi_init, xvec, dy, dz, params, allbcs, eqnsys, maxiter=100,
     phiprev = phi_init
     # Start the march
     for xi, x in enumerate(xvec[1:]):
-        if verbose:
-            print('x = %f'%x)
         dx = x-xprev
+        if verbose:
+            print(f'x = {x} dx = {dx}')
         phinext = advanceSystem(phiprev, dx, dy, dz, params, allbcs, eqnsys, verbose=verbose, maxiter=maxiter, tol=tol)
         for v in varlist:
             phi[v][xi+1,:,:] = phinext[v]
         phiprev = phinext.copy()
+        xprev = x
     return phi
 
 ########################################################
