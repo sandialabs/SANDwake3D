@@ -93,22 +93,22 @@ params['fx_const']=2.0*params['nu']
 # In[7]:
 
 
-phi1 = SANDwake3D.advanceSystem(phiinit, dx, dy, dz, params, allbc, SANDwake3D.laminar_eqns, verbose=True, maxiter=2)
+#phi1 = SANDwake3D.advanceSystem(phiinit, dx, dy, dz, params, allbc, SANDwake3D.laminar_eqns, verbose=True, maxiter=2)
 
 
-# In[ ]:
+# In[8]:
 
 
 phi = SANDwake3D.marchSystem(phiinit, xvec, dy, dz, params, allbc, SANDwake3D.laminar_eqns, verbose=True, maxiter=2)
 
 
-# In[ ]:
+# In[9]:
 
 
 err = np.sum(np.abs(phi['u'][-1,:,:]-phi['u'][0,:,:]))
 print('Error = %e'%err)
 
 
-# In[ ]:
+# In[10]:
 
 
