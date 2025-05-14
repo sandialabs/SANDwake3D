@@ -53,7 +53,7 @@ Nz=5
 yvec = np.linspace(-1,1,Ny)
 zvec = np.linspace(-1,1,Nz)
 
-dx   = 1
+xvec = [0.0, 1.0, 2.0]
 dy   = np.mean(np.diff(yvec))
 dz   = np.mean(np.diff(zvec))
 print(dy)
@@ -102,13 +102,13 @@ phi1 = SANDwake3D.advanceSystem(phiinit, dx, dy, dz, params, allbc, SANDwake3D.l
 phi = SANDwake3D.marchSystem(phiinit, xvec, dy, dz, params, allbc, SANDwake3D.laminar_eqns, verbose=True, maxiter=2)
 
 
-# In[8]:
+# In[ ]:
 
 
-err = np.sum(np.abs(phi1['u'] - Uinit))
+err = np.sum(np.abs(phi['u'][-1,:,:]-phi['u'][0,:,:]))
 print('Error = %e'%err)
 
 
-# In[9]:
+# In[ ]:
 
 
