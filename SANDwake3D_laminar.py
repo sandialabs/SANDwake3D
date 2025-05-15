@@ -110,6 +110,8 @@ def advanceU(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc_z
     inv_dy2 = 1.0 / (dy * dy)
     inv_dz = 1.0 / dz
     inv_dz2 = 1.0 / (dz * dz)
+    row_lo, dentry_lo = applyBC(bc_ylo, 'lower', dy)
+    row_hi, dentry_hi = applyBC(bc_yhi, 'upper', dy)
     for j in range(Nz):
         LHS_nhalf = np.zeros((Ny,3))
         # == Set up the LHS matrices ==
@@ -119,8 +121,6 @@ def advanceU(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc_z
             - nu * inv_dy2 * D2cen
         )
         # Apply BC's
-        row_lo, dentry_lo = applyBC(bc_ylo, 'lower', dy)
-        row_hi, dentry_hi = applyBC(bc_yhi, 'upper', dy)
         LHS_nhalf[0,:]  = row_lo
         LHS_nhalf[-1,:] = row_hi
         RHS_nhalf[0,:]  = dentry_lo
@@ -262,6 +262,8 @@ def advanceW(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc_z
     inv_dy2 = 1.0 / (dy * dy)
     inv_dz = 1.0 / dz
     inv_dz2 = 1.0 / (dz * dz)
+    row_lo, dentry_lo = applyBC(bc_ylo, 'lower', dy)
+    row_hi, dentry_hi = applyBC(bc_yhi, 'upper', dy)
     for j in range(Nz):
         LHS_nhalf = np.zeros((Ny,3))
         LHS_nhalf[1:-1, :] = (
@@ -270,8 +272,6 @@ def advanceW(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc_z
             - nu * inv_dy2 * D2cen
         )
         # Apply BC's
-        row_lo, dentry_lo = applyBC(bc_ylo, 'lower', dy)
-        row_hi, dentry_hi = applyBC(bc_yhi, 'upper', dy)
         LHS_nhalf[0,:]  = row_lo
         LHS_nhalf[-1,:] = row_hi
         RHS_nhalf[0,:]  = dentry_lo
@@ -292,8 +292,6 @@ def advanceW(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc_z
             - nu * inv_dz2 * D2cen
         )
         # Apply BC's
-        row_lo, dentry_lo = applyBC(bc_zlo, 'lower', dz)
-        row_hi, dentry_hi = applyBC(bc_zhi, 'upper', dz)
         if i==0:
             row_lo, dentry_lo = applyBC({'type':'dirichlet', 'value':w_tilde[i,0]}, 'lower', dz)
         if i==Ny-1:

@@ -62,19 +62,13 @@ def D2z(u, i, j):
     return u[i, j+1] - 2.0*u[i, j] + u[i, j-1]
 # ==================================
 
-def applyBC(bcdict, location, dz, z=None):
+def applyBC(bcdict, location, dz):
     # Stencils
-    Irow   = np.array([0,   1,  0])
-    D1for  = np.array([0,  -1,  1])/(dz)
-    D1back = np.array([-1,  1,  0])/(dz)
-    Dstencil =  D1for if location=='lower' else D1back
-    #value = bcdict['func'](z) if bcdict['value'] is None else bcdict['value']
-    value  = bcdict['value']
-    
     if bcdict['type'] == 'dirichlet':
-        return Irow,  value
+        return np.array([0,   1,  0]),  bcdict['value']
     elif bcdict['type'] == 'neumann':
-        return Dstencil, value
+        Dstencil =  np.array([0,  -1,  1])/(dz) if location=='lower' else np.array([-1,  1,  0])/(dz)
+        return Dstencil, bcdict['value']
     return None
 
 def getTilde(phi_np1, phi_n):
