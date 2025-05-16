@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import numpy as np
-from scipy.linalg import solve_banded
+from scipy.linalg.lapack import dgbsv
 import copy
 from collections import OrderedDict
 
@@ -9,16 +9,29 @@ def solvetridiag(matrow, b, verbose=False):
     """
     Solve tridiagonal system
     """
-    lu = (1,1)
     N  = len(matrow)
-    ab = np.zeros((3, N))
-    ab[0,1:]  = matrow[:-1,2]
-    ab[1,:]   = matrow[:,1]
-    ab[2,:-1] = matrow[1:,0]
-    if verbose: 
+
+    kl = 1
+    ku = 1
+    ldab = 2 * kl + ku + 1
+    ab = np.zeros((ldab, N))
+    ab[1, 1:] = matrow[:-1, 2]
+    ab[2, :] = matrow[:, 1]
+    ab[3, :-1] = matrow[1:, 0]
+    if verbose:
         print(ab.shape)
         print(b.shape)
-    x  = solve_banded(lu, ab, b)
+    lu, piv, x, info = dgbsv(kl, ku, ab, b, overwrite_ab=0, overwrite_b=0)
+    if info != 0:
+        raise RuntimeError(f"dgbsv failed with info = {info}")
+
+    # We could use this instead (many more checks) but it is slower
+    # ab = np.zeros((3, N))
+    # ab[0,1:]  = matrow[:-1,2]
+    # ab[1,:]   = matrow[:,1]
+    # ab[2,:-1] = matrow[1:,0]
+    # x  = solve_banded((kl, ku), ab, b)
+
     return x
 
 # Set up differentiation operators on the RHS
