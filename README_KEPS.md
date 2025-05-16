@@ -123,15 +123,15 @@ $$
 **First half-step**
 
 $$ 
-\left[\frac{ \tilde{U}}{\Delta x/2} + \left( \tilde{V} - \frac{D_y \tilde{\nu}_T}{\Delta y} \right) \frac{D_y}{\Delta y} - (\nu + \tilde{\nu}_T) \frac{D_y^2 }{(\Delta y)^2} \right] U_{ij}^{n+1/2} =
-\left[  \frac{ \tilde{U} }{\Delta x/2} - \left( \tilde{W} - \frac{D_z \tilde{\nu}_T}{\Delta z} \right) \frac{D_z }{\Delta z} + (\nu + \tilde{\nu}_T) \frac{D_z^2}{(\Delta z)^2} \right] U_{ij}^n + f_x^n
+\left[\frac{ \tilde{U}}{\Delta x/2} + \left( \tilde{V} - \frac{D_y \tilde{\nu}\_T}{\Delta y} \right) \frac{D_y}{\Delta y} - (\nu + \tilde{\nu}\_T) \frac{D_y^2 }{(\Delta y)^2} \right] U_{ij}^{n+1/2} =
+\left[  \frac{ \tilde{U} }{\Delta x/2} - \left( \tilde{W} - \frac{D_z \tilde{\nu}\_T}{\Delta z} \right) \frac{D_z }{\Delta z} + (\nu + \tilde{\nu}\_T) \frac{D_z^2}{(\Delta z)^2} \right] U_{ij}^n + f_x^n
 $$
 
 **Second half-step**
 
 $$ 
-\left[\frac{\tilde{U}}{\Delta x/2} + \left( \tilde{W} - \frac{D_z \tilde{\nu}_T}{\Delta z} \right) \frac{D_z }{\Delta z} - (\nu + \tilde{\nu}_T) \frac{D_z^2 }{(\Delta z)^2} \right] U_{ij}^{n+1}=
-\left[ \frac{\tilde{U}}{\Delta x/2} - \left( \tilde{V} - \frac{D_y \tilde{\nu}_T}{\Delta y} \right) \frac{D_y }{\Delta y} + (\nu + \tilde{\nu}_T) \frac{D_y^2 }{(\Delta y)^2} \right] U_{ij}^{n+1/2} + f_x^{n+1/2}
+\left[\frac{\tilde{U}}{\Delta x/2} + \left( \tilde{W} - \frac{D_z \tilde{\nu}\_T}{\Delta z} \right) \frac{D_z }{\Delta z} - (\nu + \tilde{\nu}\_T) \frac{D_z^2 }{(\Delta z)^2} \right] U_{ij}^{n+1}=
+\left[ \frac{\tilde{U}}{\Delta x/2} - \left( \tilde{V} - \frac{D_y \tilde{\nu}\_T}{\Delta y} \right) \frac{D_y }{\Delta y} + (\nu + \tilde{\nu}\_T) \frac{D_y^2 }{(\Delta y)^2} \right] U_{ij}^{n+1/2} + f_x^{n+1/2}
 $$
 
 #### W-Momentum
@@ -157,15 +157,15 @@ $$
 **First half-step**
 
 $$
-\left[ \frac{ \tilde{U}}{\Delta x/2} + \left( \tilde{V} - \frac{D_y \tilde{\nu}_T}{\Delta y} \right) \frac{D_y}{\Delta y} - (\nu + \tilde{\nu}_T) \frac{D_y^2 }{(\Delta y)^2} \right] W_{ij}^{n+1/2} =
-\left[\frac{\tilde{U}}{\Delta x/2} - \left( \tilde{W} - \frac{D_z \tilde{\nu}_T}{\Delta z} \right) \frac{D_z }{\Delta z} + (\nu + \tilde{\nu}_T) \frac{D_z^2}{(\Delta z)^2} \right] W_{ij}^n + F_z^n
+\left[ \frac{ \tilde{U}}{\Delta x/2} + \left( \tilde{V} - \frac{D_y \tilde{\nu}\_T}{\Delta y} \right) \frac{D_y}{\Delta y} - (\nu + \tilde{\nu}\_T) \frac{D_y^2 }{(\Delta y)^2} \right] W_{ij}^{n+1/2} =
+\left[\frac{\tilde{U}}{\Delta x/2} - \left( \tilde{W} - \frac{D_z \tilde{\nu}\_T}{\Delta z} \right) \frac{D_z }{\Delta z} + (\nu + \tilde{\nu}\_T) \frac{D_z^2}{(\Delta z)^2} \right] W_{ij}^n + F_z^n
 $$
 
 **Second half-step**
 
 $$ 
-\left[\frac{\tilde{U}}{\Delta x/2} + \left( \tilde{W} - \frac{D_z \tilde{\nu}_T}{\Delta z} \right) \frac{D_z }{\Delta z} - (\nu + \tilde{\nu}_T) \frac{D_z^2 }{(\Delta z)^2} \right] W_{ij}^{n+1}=
-\left[ \frac{\tilde{U}}{\Delta x/2} - \left( \tilde{V} - \frac{D_y \tilde{\nu}_T}{\Delta y} \right) \frac{D_y }{\Delta y} + (\nu + \tilde{\nu}_T) \frac{D_y^2 }{(\Delta y)^2} \right] W_{ij}^{n+1/2} + F_z^{n+1/2}
+\left[\frac{\tilde{U}}{\Delta x/2} + \left( \tilde{W} - \frac{D_z \tilde{\nu}\_T}{\Delta z} \right) \frac{D_z }{\Delta z} - (\nu + \tilde{\nu}\_T) \frac{D_z^2 }{(\Delta z)^2} \right] W_{ij}^{n+1}=
+\left[ \frac{\tilde{U}}{\Delta x/2} - \left( \tilde{V} - \frac{D_y \tilde{\nu}\_T}{\Delta y} \right) \frac{D_y }{\Delta y} + (\nu + \tilde{\nu}\_T) \frac{D_y^2 }{(\Delta y)^2} \right] W_{ij}^{n+1/2} + F_z^{n+1/2}
 $$
 
 #### TKE
