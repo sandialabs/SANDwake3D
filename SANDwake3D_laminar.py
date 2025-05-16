@@ -18,18 +18,29 @@ def RHS_u_nhalf(phi_np1, phi_n, dx, dy, dz, params):
 
     nu = params['nu']
     
-    N  = u_n.shape
-    Ny = N[0]
-    Nz = N[1]
-    RHS = np.zeros((Ny, Nz))
-    # These loops can be optimized
-    for i in range(Ny):
-        j=0
-        RHS[i,j] = u_tilde[i,j]*u_n[i,j]/(0.5*dx) - w_tilde[i,j]/dz*D1zfor(u_n, i, j) + nu*D2zfor(u_n, i, j)/(dz*dz)  
-        for j in range(1,Nz-1):
-            RHS[i,j] = u_tilde[i,j]*u_n[i,j]/(0.5*dx) - w_tilde[i,j]/dz*D1z(u_n, i, j) + nu*D2z(u_n, i, j)/(dz*dz)
-        j=Nz-1
-        RHS[i,j] = u_tilde[i,j]*u_n[i,j]/(0.5*dx) - w_tilde[i,j]/dz*D1zback(u_n, i, j) + nu*D2zback(u_n, i, j)/(dz*dz)
+    RHS = np.empty_like(u_n)
+    inv_dx = 1.0 / dx
+    inv_dz = 1.0 / dz
+    inv_dz2 = 1.0 / (dz * dz)
+    inv_half_dx = 2.0 * inv_dx
+
+    RHS[:, 0] = (
+    u_tilde[:, 0] * u_n[:, 0] * inv_half_dx
+    - w_tilde[:, 0] * inv_dz * (u_n[:, 1] - u_n[:, 0])
+    + nu * (u_n[:, 0] - 2.0 * u_n[:, 1] + u_n[:, 2]) * inv_dz2
+    )
+
+    RHS[:, 1:-1] = (
+        u_tilde[:, 1:-1] * u_n[:, 1:-1] * inv_half_dx
+        - w_tilde[:, 1:-1] * inv_dz * 0.5 * (u_n[:, 2:] - u_n[:, :-2])
+        + nu * (u_n[:, 2:] - 2.0 * u_n[:, 1:-1] + u_n[:, :-2]) * inv_dz2
+    )
+
+    RHS[:, -1] = (
+        u_tilde[:, -1] * u_n[:, -1] * inv_half_dx
+        - w_tilde[:, -1] * inv_dz * (u_n[:, -1] - u_n[:, -2])
+        + nu * (u_n[:, -1] - 2.0 * u_n[:, -2] + u_n[:, -3]) * inv_dz2
+    )
     return RHS
 
 def RHS_u_np1(phi_np1, u_nhalf, phi_n, dx, dy, dz, params):
@@ -42,19 +53,31 @@ def RHS_u_np1(phi_np1, u_nhalf, phi_n, dx, dy, dz, params):
     u_tilde, v_tilde, w_tilde = getTilde(phi_np1, phi_n)
 
     nu = params['nu']
+
+    RHS = np.empty_like(u_n)
+    inv_dx = 1.0 / dx
+    inv_half_dx = 2.0 * inv_dx
+    inv_dy = 1.0 / dy
+    inv_dy2 = 1.0 / (dy * dy)
+
+    RHS[1:-1, :] = (
+        u_tilde[1:-1, :] * u_nhalf[1:-1, :] * inv_half_dx
+        - v_tilde[1:-1, :] * inv_dy * 0.5 * (u_nhalf[2:, :] - u_nhalf[:-2, :])
+        + nu * (u_nhalf[2:, :] - 2.0 * u_nhalf[1:-1, :] + u_nhalf[:-2, :]) * inv_dy2
+    )
+
+    RHS[0, :] = (
+        u_tilde[0, :] * u_nhalf[0, :] * inv_half_dx
+        - v_tilde[0, :] * inv_dy * (u_nhalf[1, :] - u_nhalf[0, :])
+        + nu * (u_nhalf[0, :] - 2.0 * u_nhalf[1, :] + u_nhalf[2, :]) * inv_dy2
+    )
+
+    RHS[-1, :] = (
+        u_tilde[-1, :] * u_nhalf[-1, :] * inv_half_dx
+        - v_tilde[-1, :] * inv_dy * (u_nhalf[-1, :] - u_nhalf[-2, :])
+        + nu * (u_nhalf[-1, :] - 2.0 * u_nhalf[-2, :] + u_nhalf[-3, :]) * inv_dy2
+    )
     
-    N  = u_n.shape
-    Ny = N[0]
-    Nz = N[1]
-    RHS = np.zeros((Ny, Nz))
-    # These loops can be optimized
-    for j in range(Nz):
-        i=0
-        RHS[i,j] = u_tilde[i,j]*u_nhalf[i,j]/(0.5*dx) - v_tilde[i,j]/dy*D1yfor(u_nhalf, i, j) + nu*D2yfor(u_nhalf, i, j)/(dy*dy)
-        for i in range(1,Ny-1):
-            RHS[i,j] = u_tilde[i,j]*u_nhalf[i,j]/(0.5*dx) - v_tilde[i,j]/dy*D1y(u_nhalf, i, j) + nu*D2y(u_nhalf, i, j)/(dy*dy)
-        i=Ny-1
-        RHS[i,j] = u_tilde[i,j]*u_nhalf[i,j]/(0.5*dx) - v_tilde[i,j]/dy*D1yback(u_nhalf, i, j) + nu*D2yback(u_nhalf, i, j)/(dy*dy) 
     return RHS
 
 def advanceU(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc_zhi):
@@ -82,14 +105,22 @@ def advanceU(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc_z
     # -----------------------
     u_nhalf   = np.zeros((Ny, Nz))
     RHS_nhalf = RHS_u_nhalf(phi_np1old, phi_n, dx, dy, dz, params) + fx_const
+    inv_half_dx = 2.0 / dx
+    inv_dy = 1.0 / dy
+    inv_dy2 = 1.0 / (dy * dy)
+    inv_dz = 1.0 / dz
+    inv_dz2 = 1.0 / (dz * dz)
+    row_lo, dentry_lo = applyBC(bc_ylo, 'lower', dy)
+    row_hi, dentry_hi = applyBC(bc_yhi, 'upper', dy)
     for j in range(Nz):
         LHS_nhalf = np.zeros((Ny,3))
         # == Set up the LHS matrices ==
-        for i in range(1,Ny-1):
-            LHS_nhalf[i,:] = u_tilde[i,j]/(0.5*dx)*Irow + v_tilde[i,j]*Dcen/dy - nu*D2cen/(dy*dy)
+        LHS_nhalf[1:-1, :] = (
+            u_tilde[1:-1, j, np.newaxis] * inv_half_dx * Irow
+            + v_tilde[1:-1, j, np.newaxis] * inv_dy * Dcen
+            - nu * inv_dy2 * D2cen
+        )
         # Apply BC's
-        row_lo, dentry_lo = applyBC(bc_ylo, 'lower', dy)
-        row_hi, dentry_hi = applyBC(bc_yhi, 'upper', dy)
         LHS_nhalf[0,:]  = row_lo
         LHS_nhalf[-1,:] = row_hi
         RHS_nhalf[0,:]  = dentry_lo
@@ -104,16 +135,21 @@ def advanceU(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc_z
     u_np1   = np.zeros((Ny, Nz))
     RHS_np1 = RHS_u_np1(phi_np1old, u_nhalf, phi_n, dx, dy, dz, params) + fx_const
     # == Set up the LHS matrices ==
+    row_lo_base, dentry_lo_base = applyBC(bc_zlo, 'lower', dz)
+    row_hi_base, dentry_hi_base = applyBC(bc_zhi, 'upper', dz)
     for i in range(Ny):
         LHS_np1 = np.zeros((Nz,3))
-        for j in range(1,Nz-1):
-            LHS_np1[j,:] = u_tilde[i,j]/(0.5*dx)*Irow + w_tilde[i,j]*Dcen/dz - nu*D2cen/(dz*dz) 
+        LHS_np1[1:-1, :] = (
+            u_tilde[i, 1:-1, np.newaxis] * inv_half_dx * Irow
+            + w_tilde[i, 1:-1, np.newaxis] * inv_dz * Dcen
+            - nu * inv_dz2 * D2cen
+        )
         # Apply BC's
-        row_lo, dentry_lo = applyBC(bc_zlo, 'lower', dz)
-        row_hi, dentry_hi = applyBC(bc_zhi, 'upper', dz)
+        row_lo, dentry_lo = row_lo_base, dentry_lo_base
+        row_hi, dentry_hi = row_hi_base, dentry_hi_base
         if i==0:
             row_lo, dentry_lo = applyBC({'type':'dirichlet', 'value':u_tilde[i,0]}, 'lower', dz)
-        if i==Ny-1:
+        elif i==Ny-1:
             row_hi, dentry_hi = applyBC({'type':'dirichlet', 'value':u_tilde[i,-1]}, 'lower', dz)            
         LHS_np1[0,:]  = row_lo
         LHS_np1[-1,:] = row_hi
@@ -136,18 +172,30 @@ def RHS_w_nhalf(phi_np1, phi_n, dx, dy, dz, params):
 
     nu = params['nu']
 
-    N  = u_n.shape
-    Ny = N[0]
-    Nz = N[1]
-    RHS = np.zeros((Ny, Nz))
-    # These loops can be optimized
-    for i in range(Ny):
-        j=0
-        RHS[i,j] = u_tilde[i,j]*w_n[i,j]/(0.5*dx) - w_tilde[i,j]/dz*D1zfor(w_n, i, j) + nu*D2zfor(w_n, i, j)/(dz*dz)  
-        for j in range(1,Nz-1):
-            RHS[i,j] = u_tilde[i,j]*w_n[i,j]/(0.5*dx) - w_tilde[i,j]/dz*D1z(w_n, i, j) + nu*D2z(w_n, i, j)/(dz*dz)
-        j=Nz-1
-        RHS[i,j] = u_tilde[i,j]*w_n[i,j]/(0.5*dx) - w_tilde[i,j]/dz*D1zback(w_n, i, j) + nu*D2zback(w_n, i, j)/(dz*dz)
+    RHS = np.empty_like(u_n)
+    inv_dx = 1.0 / dx
+    inv_half_dx = 2.0 * inv_dx
+    inv_dz = 1.0 / dz
+    inv_dz2 = 1.0 / (dz * dz)
+
+    RHS[:, 1:-1] = (
+        u_tilde[:, 1:-1] * w_n[:, 1:-1] * inv_half_dx
+        - w_tilde[:, 1:-1] * inv_dz * 0.5 * (w_n[:, 2:] - w_n[:, :-2])
+        + nu * (w_n[:, 2:] - 2.0 * w_n[:, 1:-1] + w_n[:, :-2]) * inv_dz2
+    )
+
+    RHS[:, 0] = (
+    u_tilde[:, 0] * w_n[:, 0] * inv_half_dx
+    - w_tilde[:, 0] * inv_dz * (w_n[:, 1] - w_n[:, 0])
+    + nu * (w_n[:, 0] - 2.0 * w_n[:, 1] + w_n[:, 2]) * inv_dz2
+    )
+
+    RHS[:, -1] = (
+        u_tilde[:, -1] * w_n[:, -1] * inv_half_dx
+        - w_tilde[:, -1] * inv_dz * (w_n[:, -1] - w_n[:, -2])
+        + nu * (w_n[:, -1] - 2.0 * w_n[:, -2] + w_n[:, -3]) * inv_dz2
+    )
+
     return RHS
 
 def RHS_w_np1(phi_np1, w_nhalf, phi_n, dx, dy, dz, params):
@@ -161,19 +209,29 @@ def RHS_w_np1(phi_np1, w_nhalf, phi_n, dx, dy, dz, params):
 
     nu = params['nu']
 
-    N  = u_n.shape
-    Ny = N[0]
-    Nz = N[1]
-    RHS = np.zeros((Ny, Nz))
+    RHS = np.empty_like(u_n)
+    inv_dx = 1.0 / dx
+    inv_half_dx = 2.0 * inv_dx
+    inv_dy = 1.0 / dy
+    inv_dy2 = 1.0 / (dy * dy)
 
-    # These loops can be optimized
-    for j in range(Nz):
-        i=0
-        RHS[i,j] = u_tilde[i,j]*w_nhalf[i,j]/(0.5*dx) - v_tilde[i,j]/dy*D1yfor(w_nhalf, i, j) + nu*D2yfor(w_nhalf, i, j)/(dy*dy)
-        for i in range(1,Ny-1):
-            RHS[i,j] = u_tilde[i,j]*w_nhalf[i,j]/(0.5*dx) - v_tilde[i,j]/dy*D1y(w_nhalf, i, j) + nu*D2y(w_nhalf, i, j)/(dy*dy)
-        i=Ny-1
-        RHS[i,j] = u_tilde[i,j]*w_nhalf[i,j]/(0.5*dx) - v_tilde[i,j]/dy*D1yback(w_nhalf, i, j) + nu*D2yback(w_nhalf, i, j)/(dy*dy) 
+    RHS[1:-1, :] = (
+        u_tilde[1:-1, :] * w_nhalf[1:-1, :] * inv_half_dx
+        - v_tilde[1:-1, :] * inv_dy * 0.5 * (w_nhalf[2:, :] - w_nhalf[:-2, :])
+        + nu * (w_nhalf[2:, :] - 2.0 * w_nhalf[1:-1, :] + w_nhalf[:-2, :]) * inv_dy2
+    )
+
+    RHS[0, :] = (
+    u_tilde[0, :] * w_nhalf[0, :] * inv_half_dx
+    - v_tilde[0, :] * inv_dy * (w_nhalf[1, :] - w_nhalf[0, :])
+    + nu * (w_nhalf[0, :] - 2.0 * w_nhalf[1, :] + w_nhalf[2, :]) * inv_dy2
+    )
+
+    RHS[-1, :] = (
+        u_tilde[-1, :] * w_nhalf[-1, :] * inv_half_dx
+        - v_tilde[-1, :] * inv_dy * (w_nhalf[-1, :] - w_nhalf[-2, :])
+        + nu * (w_nhalf[-1, :] - 2.0 * w_nhalf[-2, :] + w_nhalf[-3, :]) * inv_dy2
+    )
     return RHS
 
 def advanceW(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc_zhi):
@@ -201,14 +259,21 @@ def advanceW(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc_z
     # -----------------------
     w_nhalf   = np.zeros((Ny, Nz))
     RHS_nhalf = RHS_w_nhalf(phi_np1old, phi_n, dx, dy, dz, params) + fz_const
+    inv_half_dx = 2.0 / dx
+    inv_dy = 1.0 / dy
+    inv_dy2 = 1.0 / (dy * dy)
+    inv_dz = 1.0 / dz
+    inv_dz2 = 1.0 / (dz * dz)
+    row_lo, dentry_lo = applyBC(bc_ylo, 'lower', dy)
+    row_hi, dentry_hi = applyBC(bc_yhi, 'upper', dy)
     for j in range(Nz):
         LHS_nhalf = np.zeros((Ny,3))
-        # == Set up the LHS matrices ==
-        for i in range(1,Ny-1):
-            LHS_nhalf[i,:] = u_tilde[i,j]/(0.5*dx)*Irow + v_tilde[i,j]*Dcen/dy - nu*D2cen/(dy*dy)
+        LHS_nhalf[1:-1, :] = (
+            u_tilde[1:-1, j, np.newaxis] * inv_half_dx * Irow
+            + v_tilde[1:-1, j, np.newaxis] * inv_dy * Dcen
+            - nu * inv_dy2 * D2cen
+        )
         # Apply BC's
-        row_lo, dentry_lo = applyBC(bc_ylo, 'lower', dy)
-        row_hi, dentry_hi = applyBC(bc_yhi, 'upper', dy)
         LHS_nhalf[0,:]  = row_lo
         LHS_nhalf[-1,:] = row_hi
         RHS_nhalf[0,:]  = dentry_lo
@@ -221,16 +286,21 @@ def advanceW(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc_z
     w_np1   = np.zeros((Ny, Nz))
     RHS_np1 = RHS_w_np1(phi_np1old, w_nhalf, phi_n, dx, dy, dz, params) + fz_const
     # == Set up the LHS matrices ==
+    row_lo_base, dentry_lo_base = applyBC(bc_zlo, 'lower', dz)
+    row_hi_base, dentry_hi_base = applyBC(bc_zhi, 'upper', dz)
     for i in range(Ny):
         LHS_np1 = np.zeros((Nz,3))
-        for j in range(1,Nz-1):
-            LHS_np1[j,:] = u_tilde[i,j]/(0.5*dx)*Irow + w_tilde[i,j]*Dcen/dz - nu*D2cen/(dz*dz) 
+        LHS_np1[1:-1, :] = (
+            u_tilde[i, 1:-1, np.newaxis] * inv_half_dx * Irow
+            + w_tilde[i, 1:-1, np.newaxis] * inv_dz * Dcen
+            - nu * inv_dz2 * D2cen
+        )
         # Apply BC's
-        row_lo, dentry_lo = applyBC(bc_zlo, 'lower', dz)
-        row_hi, dentry_hi = applyBC(bc_zhi, 'upper', dz)
+        row_lo, dentry_lo = row_lo_base, dentry_lo_base
+        row_hi, dentry_hi = row_hi_base, dentry_hi_base
         if i==0:
             row_lo, dentry_lo = applyBC({'type':'dirichlet', 'value':w_tilde[i,0]}, 'lower', dz)
-        if i==Ny-1:
+        elif i==Ny-1:
             row_hi, dentry_hi = applyBC({'type':'dirichlet', 'value':w_tilde[i,-1]}, 'lower', dz)            
         LHS_np1[0,:]  = row_lo
         LHS_np1[-1,:] = row_hi
@@ -252,10 +322,6 @@ def advanceMass(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, b
     v_np1, v_n = phi_np1old['v'], phi_n['v']
     w_np1, w_n = phi_np1old['w'], phi_n['w']
 
-    N  = u_n.shape
-    Ny = N[0]
-    Nz = N[1]
-
     # --- differentiation stencils ---
     #                  j-1  j  j+1
     Irow   = np.array([0,   1,  0])
@@ -263,24 +329,15 @@ def advanceMass(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, b
     D2cen  = np.array([1,  -2,  1])
     # -------------------------------
 
-    v_np1   = np.zeros((Ny, Nz))
-
-    Dz_w    = np.zeros((Ny, Nz))
-    # Note: This loop can definitely be optimized
-    for i in range(Ny):
-        for j in range(Nz):
-            if j==0:
-                Dz_w[i,j] = (w_np1[i,j+1] - w_np1[i,j])/dz
-            elif j==Nz-1:
-                Dz_w[i,j] = (w_np1[i,j] - w_np1[i,j-1])/dz
-            else:
-                Dz_w[i,j] = D1z(w_np1, i, j)/dz #0.5*(w[i,j+1] - w[i,j-1])/dz
+    Dz_w    = np.empty_like(u_n)
+    inv_dz = 1.0 / dz
+    Dz_w[:, 0] = (w_np1[:, 1] - w_np1[:, 0]) * inv_dz
+    Dz_w[:, 1:-1] = 0.5 * (w_np1[:, 2:] - w_np1[:, :-2]) * inv_dz
+    Dz_w[:, -1] = (w_np1[:, -1] - w_np1[:, -2]) * inv_dz
     RHS     = -dy*(u_np1 - u_n)/(dx) - dy*Dz_w
 
-    # == Set up the LHS matrices ==
-    for j in range(Nz):
-        row_lo, dentry_lo = applyBC(bc_ylo, 'lower', dy)
-        v_np1[:,j] = np.cumsum(RHS[:,j]) + dentry_lo
+    row_lo, dentry_lo = applyBC(bc_ylo, 'lower', dy)
+    v_np1 = np.cumsum(RHS, axis=0) + dentry_lo
     
     # # == Set up the LHS matrices ==
     # for j in range(Nz):
