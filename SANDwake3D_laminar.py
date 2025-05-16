@@ -135,6 +135,8 @@ def advanceU(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc_z
     u_np1   = np.zeros((Ny, Nz))
     RHS_np1 = RHS_u_np1(phi_np1old, u_nhalf, phi_n, dx, dy, dz, params) + fx_const
     # == Set up the LHS matrices ==
+    row_lo_base, dentry_lo_base = applyBC(bc_zlo, 'lower', dz)
+    row_hi_base, dentry_hi_base = applyBC(bc_zhi, 'upper', dz)
     for i in range(Ny):
         LHS_np1 = np.zeros((Nz,3))
         LHS_np1[1:-1, :] = (
@@ -143,11 +145,11 @@ def advanceU(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc_z
             - nu * inv_dz2 * D2cen
         )
         # Apply BC's
-        row_lo, dentry_lo = applyBC(bc_zlo, 'lower', dz)
-        row_hi, dentry_hi = applyBC(bc_zhi, 'upper', dz)
+        row_lo, dentry_lo = row_lo_base, dentry_lo_base
+        row_hi, dentry_hi = row_hi_base, dentry_hi_base
         if i==0:
             row_lo, dentry_lo = applyBC({'type':'dirichlet', 'value':u_tilde[i,0]}, 'lower', dz)
-        if i==Ny-1:
+        elif i==Ny-1:
             row_hi, dentry_hi = applyBC({'type':'dirichlet', 'value':u_tilde[i,-1]}, 'lower', dz)            
         LHS_np1[0,:]  = row_lo
         LHS_np1[-1,:] = row_hi
@@ -284,6 +286,8 @@ def advanceW(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc_z
     w_np1   = np.zeros((Ny, Nz))
     RHS_np1 = RHS_w_np1(phi_np1old, w_nhalf, phi_n, dx, dy, dz, params) + fz_const
     # == Set up the LHS matrices ==
+    row_lo_base, dentry_lo_base = applyBC(bc_zlo, 'lower', dz)
+    row_hi_base, dentry_hi_base = applyBC(bc_zhi, 'upper', dz)
     for i in range(Ny):
         LHS_np1 = np.zeros((Nz,3))
         LHS_np1[1:-1, :] = (
@@ -292,9 +296,11 @@ def advanceW(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc_z
             - nu * inv_dz2 * D2cen
         )
         # Apply BC's
+        row_lo, dentry_lo = row_lo_base, dentry_lo_base
+        row_hi, dentry_hi = row_hi_base, dentry_hi_base
         if i==0:
             row_lo, dentry_lo = applyBC({'type':'dirichlet', 'value':w_tilde[i,0]}, 'lower', dz)
-        if i==Ny-1:
+        elif i==Ny-1:
             row_hi, dentry_hi = applyBC({'type':'dirichlet', 'value':w_tilde[i,-1]}, 'lower', dz)            
         LHS_np1[0,:]  = row_lo
         LHS_np1[-1,:] = row_hi
