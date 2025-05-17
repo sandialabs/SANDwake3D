@@ -99,7 +99,7 @@ def getTilde(phi_np1, phi_n):
 def convergetest(phi_new, phi_old, tol):
     """
     """
-    varlist = [v for v, g in phi_old.items()]
+    varlist = [v for v, g in phi_new.items()]
     convergevar = {}
     for v in varlist:
         convergevar[v] = np.linalg.norm(phi_new[v] - phi_old[v])
