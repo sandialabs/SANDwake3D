@@ -708,8 +708,10 @@ def advanceMass(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, b
 
     return v_np1
 
-def getNuT(phi, Cmu):
-    return Cmu*phi['k']  # Add a limiter here
+def getNuT(phi, Cmu, nu):
+    # timescale
+    Tscale = np.fmax(phi['k']/phi['eps'], 6.0*np.sqrt(nu/phi['eps'][:,:]))
+    return Cmu*phi['k']*Tscale
 
 def advanceSystemKEPS(phi_n, dx, dy, dz, params, allbcs, eqnsys, maxiter=100,
                       tol=1.0E-6, verbose=False):
@@ -719,12 +721,12 @@ def advanceSystemKEPS(phi_n, dx, dy, dz, params, allbcs, eqnsys, maxiter=100,
     varlist = [v for v, g in eqnsys.items()]
 
     if 'nuT' not in phi_n:
-        phi_n['nuT'] = getNuT(phi_n, params['Cmu']) 
+        phi_n['nuT'] = getNuT(phi_n, params['Cmu'], params['nu']) 
     phi_n1 = copy.deepcopy(phi_n)
 
     for k in range(maxiter):
         phi_next = OrderedDict()
-        phi_n1['nuT'] = getNuT(phi_n1, params['Cmu'])
+        phi_n1['nuT'] = getNuT(phi_n1, params['Cmu'], params['nu'])
         # Loop over all variables
         for v in varlist:
             bcvar = allbcs[v]
