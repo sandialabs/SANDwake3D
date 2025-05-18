@@ -43,13 +43,15 @@ $$
 u \frac{\partial \varepsilon}{\partial x} + v \frac{\partial \varepsilon}{\partial y} + w \frac{\partial \varepsilon}{\partial z} = 
 \frac{C_{1\varepsilon}}{\mathcal T} \left[ \nu_T \left(\frac{\partial v}{\partial y} \right)^2 + \nu_T \left(\frac{\partial w}{\partial z} \right)^2 + (1-C_{3\varepsilon})G_B \right] -
 \frac{C_{2\varepsilon}}{\mathcal T} \varepsilon +
-\frac{\partial}{\partial y} \left( (\nu + {\nu_T \over \sigma_k}) \frac{\partial \varepsilon}{\partial y} \right) +
-\frac{\partial}{\partial z} \left( (\nu + {\nu_T\over \sigma_k} ) \frac{\partial \varepsilon}{\partial z} \right) 
+\frac{\partial}{\partial y} \left( (\nu + {\nu_T \over \sigma_\varepsilon}) \frac{\partial \varepsilon}{\partial y} \right) +
+\frac{\partial}{\partial z} \left( (\nu + {\nu_T\over \sigma_\varepsilon} ) \frac{\partial \varepsilon}{\partial z} \right) 
 $$
 
 Temperature 
 
-_TBD_
+$$
+u \frac{\partial \Theta}{\partial x} + v \frac{\partial \Theta}{\partial y} + w \frac{\partial \Theta}{\partial z} = \frac{\partial}{\partial y} \frac{\nu_t}{\sigma_T} \frac{\partial \Theta}{\partial y} + \frac{\partial}{\partial z} \frac{\nu_t}{\sigma_T} \frac{\partial \Theta}{\partial z} 
+$$
 
 $$
 \nu_T = C_\mu k \mathcal{T}

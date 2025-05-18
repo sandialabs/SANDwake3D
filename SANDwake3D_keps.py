@@ -503,15 +503,15 @@ def RHS_eps_nhalf(phi_np1, phi_n, Dz_nuT_tilde, dx, dy, dz, params):
     nuT_tilde = phi_tilde['nuT']
 
     nu     = params['nu']
-    sigmak = params['sigmak']
+    sigmaeps = params['sigmaeps']
 
     N  = u_tilde.shape
     Ny = N[0]
     Nz = N[1]
     RHS = np.zeros((Ny, Nz))
 
-    nu_total = np.ones((Ny, Nz))*nu + nuT_tilde/sigmak
-    w_total  = w_tilde - Dz_nuT_tilde/sigmak
+    nu_total = np.ones((Ny, Nz))*nu + nuT_tilde/sigmaeps
+    w_total  = w_tilde - Dz_nuT_tilde/sigmaeps
 
     # These loops can be optimized
     for i in range(Ny):
@@ -536,15 +536,15 @@ def RHS_eps_np1(phi_np1, eps_nhalf, phi_n, Dy_nuT_tilde, dx, dy, dz, params):
     nuT_tilde = phi_tilde['nuT']
 
     nu = params['nu']
-    sigmak = params['sigmak']
+    sigmaeps = params['sigmaeps']
 
     N  = u_n.shape
     Ny = N[0]
     Nz = N[1]
     RHS = np.zeros((Ny, Nz))
     
-    nu_total = np.ones((Ny, Nz))*nu + nuT_tilde/sigmak
-    v_total  = v_tilde - Dy_nuT_tilde/sigmak
+    nu_total = np.ones((Ny, Nz))*nu + nuT_tilde/sigmaeps
+    v_total  = v_tilde - Dy_nuT_tilde/sigmaeps
 
     # These loops can be optimized
     for j in range(Nz):
@@ -572,7 +572,7 @@ def advanceEPS(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc
     
     # Load parameters
     nu       = params['nu']
-    sigmak   = params['sigmak']
+    sigmaeps = params['sigmaeps']
     
     # --- differentiation stencils ---
     #                  j-1  j  j+1
@@ -602,9 +602,9 @@ def advanceEPS(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc
         i=Ny-1
         Dy_nuT[i,j] = D1yback(nuT_tilde, i, j)/dy
 
-    nu_total = np.ones((Ny, Nz))*nu + nuT_tilde/sigmak
-    v_total  = v_tilde - Dy_nuT/sigmak
-    w_total  = w_tilde - Dz_nuT/sigmak
+    nu_total = np.ones((Ny, Nz))*nu + nuT_tilde/sigmaeps
+    v_total  = v_tilde - Dy_nuT/sigmaeps
+    w_total  = w_tilde - Dz_nuT/sigmaeps
 
     # First sweep: n -> n+1/2
     # -----------------------
