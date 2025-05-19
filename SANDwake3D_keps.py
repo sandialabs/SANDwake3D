@@ -407,6 +407,7 @@ def advanceTKE(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc
     u_tilde, v_tilde, w_tilde = phi_tilde['u'], phi_tilde['v'], phi_tilde['w']
     nuT_tilde = phi_tilde['nuT']
     k_tilde = phi_tilde['k']
+    eps_tilde = phi_tilde['eps']
 
     N  = u_tilde.shape
     Ny = N[0]
@@ -415,6 +416,7 @@ def advanceTKE(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc
     # Load parameters
     nu       = params['nu']
     sigmak   = params['sigmak']
+    fk_const = params['fk_const'] if 'fk_const' in params else 0.0
     
     # --- differentiation stencils ---
     #                  j-1  j  j+1
@@ -425,33 +427,44 @@ def advanceTKE(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc
 
     # Compute some quantities related to nuT
     Dz_nuT    = np.zeros((Ny, Nz))
+    Dz_W      = np.zeros((Ny, Nz))
     # Note: This loop can definitely be optimized
     for i in range(Ny):
         for j in range(Nz):
             if j==0:
                 Dz_nuT[i,j] = (nuT_tilde[i,j+1] - nuT_tilde[i,j])/dz
+                Dz_W[i,j]   = (w_tilde[i,j+1] - w_tilde[i,j])/dz               
             elif j==Nz-1:
                 Dz_nuT[i,j] = (nuT_tilde[i,j] - nuT_tilde[i,j-1])/dz
+                Dz_W[i,j]   = (w_tilde[i,j] - w_tilde[i,j-1])/dz
             else:
-                Dz_nuT[i,j] = D1z(nuT_tilde, i, j)/dz 
+                Dz_nuT[i,j] = D1z(nuT_tilde, i, j)/dz
+                Dz_W[i,j]   = D1z(w_tilde, i, j)/dz
+                
     # These loops can be optimized
     Dy_nuT    = np.zeros((Ny, Nz))
+    Dy_V      = np.zeros((Ny, Nz))
     for j in range(Nz):
         i=0
         Dy_nuT[i,j] = D1yfor(nuT_tilde, i, j)/dy
+        Dy_V[i,j] = D1yfor(v_tilde, i, j)/dy
         for i in range(1,Ny-1):
             Dy_nuT[i,j] = D1y(nuT_tilde, i, j)/dy
+            Dy_V[i,j] = D1y(v_tilde, i, j)/dy
         i=Ny-1
         Dy_nuT[i,j] = D1yback(nuT_tilde, i, j)/dy
+        Dy_V[i,j] = D1yback(v_tilde, i, j)/dy
 
     nu_total = np.ones((Ny, Nz))*nu + nuT_tilde/sigmak
     v_total  = v_tilde - Dy_nuT/sigmak
     w_total  = w_tilde - Dz_nuT/sigmak
 
+    RHS_extra_forcing = nuT_tilde*(Dy_V**2 + Dz_W**2) - eps_tilde + fk_const
+    
     # First sweep: n -> n+1/2
     # -----------------------
     tke_nhalf   = np.zeros((Ny, Nz))
-    RHS_nhalf = RHS_tke_nhalf(phi_np1old, phi_n, Dz_nuT, dx, dy, dz, params) 
+    RHS_nhalf = RHS_tke_nhalf(phi_np1old, phi_n, Dz_nuT, dx, dy, dz, params) + RHS_extra_forcing
     for j in range(Nz):
         LHS_nhalf = np.zeros((Ny,3))
         # == Set up the LHS matrices ==
@@ -470,7 +483,7 @@ def advanceTKE(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc
     # Second sweep: n+1/2 -> n+1
     # -----------------------
     tke_np1   = np.zeros((Ny, Nz))
-    RHS_np1 = RHS_tke_np1(phi_np1old, tke_nhalf, phi_n, Dy_nuT, dx, dy, dz, params)
+    RHS_np1 = RHS_tke_np1(phi_np1old, tke_nhalf, phi_n, Dy_nuT, dx, dy, dz, params) + RHS_extra_forcing
     # == Set up the LHS matrices ==
     for i in range(Ny):
         LHS_np1 = np.zeros((Nz,3))
@@ -573,6 +586,10 @@ def advanceEPS(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc
     # Load parameters
     nu       = params['nu']
     sigmaeps = params['sigmaeps']
+    C1eps    = params['C1eps']
+    C2eps    = params['C2eps']
+    C3eps    = params['C3eps']
+    feps_const = params['feps_const'] if 'feps_const' in params else 0.0
     
     # --- differentiation stencils ---
     #                  j-1  j  j+1
@@ -583,29 +600,40 @@ def advanceEPS(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc
 
     # Compute some quantities related to nuT
     Dz_nuT    = np.zeros((Ny, Nz))
+    Dz_W      = np.zeros((Ny, Nz))
     # Note: This loop can definitely be optimized
     for i in range(Ny):
         for j in range(Nz):
             if j==0:
                 Dz_nuT[i,j] = (nuT_tilde[i,j+1] - nuT_tilde[i,j])/dz
+                Dz_W[i,j]   = (w_tilde[i,j+1] - w_tilde[i,j])/dz
             elif j==Nz-1:
                 Dz_nuT[i,j] = (nuT_tilde[i,j] - nuT_tilde[i,j-1])/dz
+                Dz_W[i,j]   = (w_tilde[i,j] - w_tilde[i,j-1])/dz
             else:
-                Dz_nuT[i,j] = D1z(nuT_tilde, i, j)/dz 
+                Dz_nuT[i,j] = D1z(nuT_tilde, i, j)/dz
+                Dz_W[i,j] = D1z(w_tilde, i, j)/dz 
     # These loops can be optimized
     Dy_nuT    = np.zeros((Ny, Nz))
+    Dy_V      = np.zeros((Ny, Nz))
     for j in range(Nz):
         i=0
         Dy_nuT[i,j] = D1yfor(nuT_tilde, i, j)/dy
+        Dy_V[i,j] = D1yfor(v_tilde, i, j)/dy
         for i in range(1,Ny-1):
             Dy_nuT[i,j] = D1y(nuT_tilde, i, j)/dy
+            Dy_V[i,j] = D1y(v_tilde, i, j)/dy
         i=Ny-1
         Dy_nuT[i,j] = D1yback(nuT_tilde, i, j)/dy
+        Dy_V[i,j] = D1yback(v_tilde, i, j)/dy
 
     nu_total = np.ones((Ny, Nz))*nu + nuT_tilde/sigmaeps
     v_total  = v_tilde - Dy_nuT/sigmaeps
     w_total  = w_tilde - Dz_nuT/sigmaeps
 
+    Tscale = TimeScale(phi_tilde['k'], phi_tilde['eps'], nu)
+    RHS_extra_forcing = C1eps/Tscale*(nuT_tilde*(Dy_V)**2 + nuT_tilde*(Dz_W)**2) - C2eps*eps_tilde/Tscale + feps_const
+    
     # First sweep: n -> n+1/2
     # -----------------------
     eps_nhalf   = np.zeros((Ny, Nz))
@@ -708,9 +736,13 @@ def advanceMass(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, b
 
     return v_np1
 
+def TimeScale(k, eps, nu):
+    return np.fmax(k/eps, 6.0*np.sqrt(nu/eps))
+
 def getNuT(phi, Cmu, nu):
     # timescale
-    Tscale = np.fmax(phi['k']/phi['eps'], 6.0*np.sqrt(nu/phi['eps'][:,:]))
+    #Tscale = np.fmax(phi['k']/phi['eps'], 6.0*np.sqrt(nu/phi['eps'][:,:]))
+    Tscale = TimeScale(phi['k'], phi['eps'], nu)
     return Cmu*phi['k']*Tscale
 
 def advanceSystemKEPS(phi_n, dx, dy, dz, params, allbcs, eqnsys, maxiter=100,
