@@ -195,8 +195,8 @@ $$
 **First half-step**
 
 $$
-\left[ \frac{ \tilde{U}}{\Delta x/2} + \left( \tilde{V} - \frac{D_y \tilde{\nu}_T}{\sigma_k \Delta y} \right) \frac{D_y}{\Delta y} - (\nu + { \tilde{\nu}_T \over \sigma_k}) \frac{D_y^2 }{(\Delta y)^2} \right] k_{ij}^{n+1/2} =
-\left[\frac{\tilde{U}}{\Delta x/2} - \left( \tilde{W} - \frac{D_z \tilde{\nu}_T}{\sigma_k \Delta z} \right) \frac{D_z }{\Delta z} + (\nu + {\tilde{\nu}_T \over \sigma_k}) \frac{D_z^2}{(\Delta z)^2} \right] k_{ij}^n + F_k^n
+\left[ \frac{ \tilde{U}}{\Delta x/2} + \left( \tilde{V} - \frac{D_y \tilde{\nu_T}}{\sigma_k \Delta y} \right) \frac{D_y}{\Delta y} - (\nu + { \tilde{\nu_T} \over \sigma_k}) \frac{D_y^2 }{(\Delta y)^2} \right] k_{ij}^{n+1/2} =
+\left[\frac{\tilde{U}}{\Delta x/2} - \left( \tilde{W} - \frac{D_z \tilde{\nu_T}}{\sigma_k \Delta z} \right) \frac{D_z }{\Delta z} + (\nu + {\tilde{\nu_T} \over \sigma_k}) \frac{D_z^2}{(\Delta z)^2} \right] k_{ij}^n + F_k^n
 $$
 
 $$
@@ -206,8 +206,8 @@ $$
 **Second half-step**
 
 $$
-\left[\frac{\tilde{U}}{\Delta x/2} + \left( \tilde{W} - \frac{D_z \tilde{\nu}_T}{\sigma_k \Delta z} \right) \frac{D_z }{\Delta z} - (\nu + \frac{\tilde{\nu}_T}{\sigma_k}) \frac{D_z^2 }{(\Delta z)^2} \right] k_{ij}^{n+1}=
-\left[ \frac{\tilde{U}}{\Delta x/2} - \left( \tilde{V} - \frac{D_y \tilde{\nu}_T}{\sigma_k \Delta y} \right) \frac{D_y }{\Delta y} + (\nu + \frac{\tilde{\nu}_T}{\sigma_k}) \frac{D_y^2 }{(\Delta y)^2} \right] k_{ij}^{n+1/2} + F_k^{n+1/2}
+\left[\frac{\tilde{U}}{\Delta x/2} + \left( \tilde{W} - \frac{D_z \tilde{\nu_T}}{\sigma_k \Delta z} \right) \frac{D_z }{\Delta z} - (\nu + \frac{\tilde{\nu_T}}{\sigma_k}) \frac{D_z^2 }{(\Delta z)^2} \right] k_{ij}^{n+1}=
+\left[ \frac{\tilde{U}}{\Delta x/2} - \left( \tilde{V} - \frac{D_y \tilde{\nu_T}}{\sigma_k \Delta y} \right) \frac{D_y }{\Delta y} + (\nu + \frac{\tilde{\nu_T}}{\sigma_k}) \frac{D_y^2 }{(\Delta y)^2} \right] k_{ij}^{n+1/2} + F_k^{n+1/2}
 $$
 
 
@@ -241,13 +241,13 @@ $$
 **First half-step**
 
 $$
-\left[ \frac{ \tilde{U}}{\Delta x/2} + \left( \tilde{V} - \frac{D_y \tilde{\nu}_T}{\sigma_k \Delta y} \right) \frac{D_y}{\Delta y} - (\nu + { \tilde{\nu}_T \over \sigma_k}) \frac{D_y^2 }{(\Delta y)^2} \right] \varepsilon_{ij}^{n+1/2} =
-\left[\frac{\tilde{U}}{\Delta x/2} - \left( \tilde{W} - \frac{D_z \tilde{\nu}_T}{\sigma_k \Delta z} \right) \frac{D_z }{\Delta z} + (\nu + {\tilde{\nu}_T \over \sigma_k}) \frac{D_z^2}{(\Delta z)^2} \right] \varepsilon_{ij}^n + F_\varepsilon^n
+\left[ \frac{ \tilde{U}}{\Delta x/2} + \left( \tilde{V} - \frac{D_y \tilde{\nu_T}}{\sigma_k \Delta y} \right) \frac{D_y}{\Delta y} - (\nu + { \tilde{\nu_T}\over \sigma_k}) \frac{D_y^2 }{(\Delta y)^2} \right] \varepsilon_{ij}^{n+1/2} =
+\left[\frac{\tilde{U}}{\Delta x/2} - \left( \tilde{W} - \frac{D_z \tilde{\nu_T}}{\sigma_k \Delta z} \right) \frac{D_z }{\Delta z} + (\nu + {\tilde{\nu_T} \over \sigma_k}) \frac{D_z^2}{(\Delta z)^2} \right] \varepsilon_{ij}^n + F_\varepsilon^n
 $$
 
 **Second half-step**
 
 $$
-\left[\frac{\tilde{U}}{\Delta x/2} + \left( \tilde{W} - \frac{D_z \tilde{\nu}_T}{\sigma_k \Delta z} \right) \frac{D_z }{\Delta z} - (\nu + \frac{\tilde{\nu}_T}{\sigma_k}) \frac{D_z^2 }{(\Delta z)^2} \right] \varepsilon_{ij}^{n+1} =
-\left[ \frac{\tilde{U}}{\Delta x/2} - \left( \tilde{V} - \frac{D_y \tilde{\nu}_T}{\sigma_k \Delta y} \right) \frac{D_y }{\Delta y} + (\nu + \frac{\tilde{\nu}_T}{\sigma_k}) \frac{D_y^2 }{(\Delta y)^2} \right] \varepsilon_{ij}^{n+1/2} + F_\varepsilon^{n+1/2}
+\left[\frac{\tilde{U}}{\Delta x/2} + \left( \tilde{W} - \frac{D_z \tilde{\nu_T}}{\sigma\_k \Delta z} \right) \frac{D_z }{\Delta z} - (\nu + \frac{\tilde{\nu_T}}{\sigma\_k}) \frac{D_z^2 }{(\Delta z)^2} \right] \varepsilon_{ij}^{n+1} =
+\left[ \frac{\tilde{U}}{\Delta x/2} - \left( \tilde{V} - \frac{D_y \tilde{\nu_T}}{\sigma\_k \Delta y} \right) \frac{D_y }{\Delta y} + (\nu + \frac{\tilde{\nu_T}}{\sigma\_k}) \frac{D_y^2 }{(\Delta y)^2} \right] \varepsilon_{ij}^{n+1/2} + F_\varepsilon^{n+1/2}
 $$
