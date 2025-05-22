@@ -32,7 +32,7 @@ TKE
 
 $$
 u \frac{\partial k}{\partial x} + v \frac{\partial k}{\partial y} + w \frac{\partial k}{\partial z} = 
-\nu_T \left[ \left(\frac{\partial v}{\partial y} \right)^2 + \left(\frac{\partial w}{\partial z} \right)^2 \right] - 
+\nu_T \left[ \left(\frac{\partial U}{\partial y} \right)^2 + \left(\frac{\partial U}{\partial z} \right)^2 \right] - 
 \epsilon + \frac{\partial}{\partial y} \left( (\nu + {\nu_T \over \sigma_k}) \frac{\partial k}{\partial y} \right) + 
 \frac{\partial}{\partial z} \left( (\nu + {\nu_T\over \sigma_k} ) \frac{\partial k}{\partial z} \right) + G_B
 $$
@@ -41,7 +41,7 @@ Dissipation
 
 $$
 u \frac{\partial \varepsilon}{\partial x} + v \frac{\partial \varepsilon}{\partial y} + w \frac{\partial \varepsilon}{\partial z} = 
-\frac{C_{1\varepsilon}}{\mathcal T} \left[ \nu_T \left(\frac{\partial v}{\partial y} \right)^2 + \nu_T \left(\frac{\partial w}{\partial z} \right)^2 + (1-C_{3\varepsilon})G_B \right] -
+\frac{C_{1\varepsilon}}{\mathcal T} \left[ \nu_T \left(\frac{\partial U}{\partial y} \right)^2 + \nu_T \left(\frac{\partial U}{\partial z} \right)^2 + (1-C_{3\varepsilon})G_B \right] -
 \frac{C_{2\varepsilon}}{\mathcal T} \varepsilon +
 \frac{\partial}{\partial y} \left( (\nu + {\nu_T \over \sigma_\varepsilon}) \frac{\partial \varepsilon}{\partial y} \right) +
 \frac{\partial}{\partial z} \left( (\nu + {\nu_T\over \sigma_\varepsilon} ) \frac{\partial \varepsilon}{\partial z} \right) 
@@ -178,7 +178,7 @@ U \frac{\partial k}{\partial x} + V \frac{\partial k}{\partial y} + W \frac{\par
 \frac{\partial}{\partial y} \left( {\nu_T \over \sigma_k}\right) \frac{\partial k}{\partial y}  + 
 \left( \nu + {\nu_T\over \sigma_k} \right) \frac{\partial^2 k}{\partial z^2}  +
 \frac{\partial}{\partial z} \left( {\nu_T\over \sigma_k}  \right) \frac{\partial k}{\partial z}  +
-\nu_T \left[ \left(\frac{\partial V}{\partial y} \right)^2 + \left(\frac{\partial W}{\partial z} \right)^2 \right] -
+\nu_T \left[ \left(\frac{\partial U}{\partial y} \right)^2 + \left(\frac{\partial U}{\partial z} \right)^2 \right] -
 \epsilon + G_B
 $$
 
@@ -188,7 +188,7 @@ U \frac{\partial k}{\partial x} +
 \left( W -\frac{\partial}{\partial z} \left( {\nu_T\over \sigma_k}  \right) \right) \frac{\partial k}{\partial z} = 
 \left (\nu + {\nu_T \over \sigma_k} \right) \frac{\partial^2 k}{\partial y^2} + 
 \left( \nu + {\nu_T\over \sigma_k} \right) \frac{\partial^2 k}{\partial z^2}  +
-\nu_T \left[ \left(\frac{\partial V}{\partial y} \right)^2 + \left(\frac{\partial W}{\partial z} \right)^2 \right] -
+\nu_T \left[ \left(\frac{\partial U}{\partial y} \right)^2 + \left(\frac{\partial U}{\partial z} \right)^2 \right] -
 \epsilon + G_B
 $$
 
@@ -200,7 +200,7 @@ $$
 $$
 
 $$
-F_k = \tilde{\nu}_T \left[ \left(\frac{D_y \tilde{V}}{\Delta y} \right)^2 + \left(\frac{D_z \tilde{W}}{\Delta z} \right)^2  \right] - \varepsilon + G_B
+F_k = \tilde{\nu}_T \left[ \left(\frac{D_y \tilde{U}}{\Delta y} \right)^2 + \left(\frac{D_z \tilde{U}}{\Delta z} \right)^2  \right] - \varepsilon + G_B
 $$
 
 **Second half-step**
@@ -215,7 +215,7 @@ $$
 
 $$
 U \frac{\partial \varepsilon}{\partial x} + V \frac{\partial \varepsilon}{\partial y} + W \frac{\partial \varepsilon}{\partial z} = 
-\frac{C_{1\varepsilon}}{\mathcal T} \left[ \nu_T \left(\frac{\partial V}{\partial y} \right)^2 + \nu_T \left(\frac{\partial W}{\partial z} \right)^2 + (1-C_{3\varepsilon})G_B \right] -
+\frac{C_{1\varepsilon}}{\mathcal T} \left[ \nu_T \left(\frac{\partial U}{\partial y} \right)^2 + \nu_T \left(\frac{\partial U}{\partial z} \right)^2 + (1-C_{3\varepsilon})G_B \right] -
 \frac{C_{2\varepsilon}}{\mathcal T} \varepsilon +
 \frac{\partial}{\partial y} \left( {\nu_T \over \sigma_k} \right) \frac{\partial \varepsilon}{\partial y}  +
 \left( \nu + {\nu_T \over \sigma_k} \right) \frac{\partial^2 \varepsilon}{\partial y^2}  +
@@ -229,12 +229,12 @@ U \frac{\partial \varepsilon}{\partial x} +
 \left( W - \frac{\partial}{\partial z} \left( {\nu_T\over \sigma_k} \right) \right) \frac{\partial \varepsilon}{\partial z} = 
 \left( \nu + {\nu_T \over \sigma_k} \right) \frac{\partial^2 \varepsilon}{\partial y^2}  +
 \left( \nu + {\nu_T\over \sigma_k} \right) \frac{\partial^2 \varepsilon}{\partial z^2} +
-\frac{C_{1\varepsilon}}{\mathcal T} \left[ \nu_T \left(\frac{\partial V}{\partial y} \right)^2 + \nu_T \left(\frac{\partial W}{\partial z} \right)^2 + (1-C_{3\varepsilon})G_B \right] -
+\frac{C_{1\varepsilon}}{\mathcal T} \left[ \nu_T \left(\frac{\partial U}{\partial y} \right)^2 + \nu_T \left(\frac{\partial U}{\partial z} \right)^2 + (1-C_{3\varepsilon})G_B \right] -
 \frac{C_{2\varepsilon}}{\mathcal T} \varepsilon 
 $$
 
 $$
-F_\varepsilon = \frac{C_{1\varepsilon}}{\mathcal T} \left[ \nu_T \left(\frac{\partial \tilde{V}}{\partial y} \right)^2 + \nu_T \left(\frac{\partial \tilde{W}}{\partial z} \right)^2 + (1-C_{3\varepsilon})G_B \right] -
+F_\varepsilon = \frac{C_{1\varepsilon}}{\mathcal T} \left[ \nu_T \left(\frac{\partial \tilde{U}}{\partial y} \right)^2 + \nu_T \left(\frac{\partial \tilde{U}}{\partial z} \right)^2 + (1-C_{3\varepsilon})G_B \right] -
 \frac{C_{2\varepsilon}}{\mathcal T} \tilde{\varepsilon}
 $$
 

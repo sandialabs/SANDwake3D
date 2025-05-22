@@ -427,39 +427,39 @@ def advanceTKE(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc
 
     # Compute some quantities related to nuT
     Dz_nuT    = np.zeros((Ny, Nz))
-    Dz_W      = np.zeros((Ny, Nz))
+    Dz_U      = np.zeros((Ny, Nz))
     # Note: This loop can definitely be optimized
     for i in range(Ny):
         for j in range(Nz):
             if j==0:
                 Dz_nuT[i,j] = (nuT_tilde[i,j+1] - nuT_tilde[i,j])/dz
-                Dz_W[i,j]   = (w_tilde[i,j+1] - w_tilde[i,j])/dz               
+                Dz_U[i,j]   = (u_tilde[i,j+1] - u_tilde[i,j])/dz               
             elif j==Nz-1:
                 Dz_nuT[i,j] = (nuT_tilde[i,j] - nuT_tilde[i,j-1])/dz
-                Dz_W[i,j]   = (w_tilde[i,j] - w_tilde[i,j-1])/dz
+                Dz_U[i,j]   = (u_tilde[i,j] - u_tilde[i,j-1])/dz
             else:
                 Dz_nuT[i,j] = D1z(nuT_tilde, i, j)/dz
-                Dz_W[i,j]   = D1z(w_tilde, i, j)/dz
+                Dz_U[i,j]   = D1z(u_tilde, i, j)/dz
                 
     # These loops can be optimized
     Dy_nuT    = np.zeros((Ny, Nz))
-    Dy_V      = np.zeros((Ny, Nz))
+    Dy_U      = np.zeros((Ny, Nz))
     for j in range(Nz):
         i=0
         Dy_nuT[i,j] = D1yfor(nuT_tilde, i, j)/dy
-        Dy_V[i,j] = D1yfor(v_tilde, i, j)/dy
+        Dy_U[i,j] = D1yfor(u_tilde, i, j)/dy
         for i in range(1,Ny-1):
             Dy_nuT[i,j] = D1y(nuT_tilde, i, j)/dy
-            Dy_V[i,j] = D1y(v_tilde, i, j)/dy
+            Dy_U[i,j] = D1y(u_tilde, i, j)/dy
         i=Ny-1
         Dy_nuT[i,j] = D1yback(nuT_tilde, i, j)/dy
-        Dy_V[i,j] = D1yback(v_tilde, i, j)/dy
+        Dy_U[i,j] = D1yback(u_tilde, i, j)/dy
 
     nu_total = np.ones((Ny, Nz))*nu + nuT_tilde/sigmak
     v_total  = v_tilde - Dy_nuT/sigmak
     w_total  = w_tilde - Dz_nuT/sigmak
 
-    RHS_extra_forcing = nuT_tilde*(Dy_V**2 + Dz_W**2) - eps_tilde + fk_const
+    RHS_extra_forcing = nuT_tilde*(Dy_U*Dy_U + Dz_U*Dz_U) - eps_tilde + fk_const
     
     # First sweep: n -> n+1/2
     # -----------------------
@@ -600,39 +600,39 @@ def advanceEPS(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc
 
     # Compute some quantities related to nuT
     Dz_nuT    = np.zeros((Ny, Nz))
-    Dz_W      = np.zeros((Ny, Nz))
+    Dz_U      = np.zeros((Ny, Nz))
     # Note: This loop can definitely be optimized
     for i in range(Ny):
         for j in range(Nz):
             if j==0:
                 Dz_nuT[i,j] = (nuT_tilde[i,j+1] - nuT_tilde[i,j])/dz
-                Dz_W[i,j]   = (w_tilde[i,j+1] - w_tilde[i,j])/dz
+                Dz_U[i,j]   = (u_tilde[i,j+1] - u_tilde[i,j])/dz
             elif j==Nz-1:
                 Dz_nuT[i,j] = (nuT_tilde[i,j] - nuT_tilde[i,j-1])/dz
-                Dz_W[i,j]   = (w_tilde[i,j] - w_tilde[i,j-1])/dz
+                Dz_U[i,j]   = (u_tilde[i,j] - u_tilde[i,j-1])/dz
             else:
                 Dz_nuT[i,j] = D1z(nuT_tilde, i, j)/dz
-                Dz_W[i,j] = D1z(w_tilde, i, j)/dz 
+                Dz_U[i,j] = D1z(u_tilde, i, j)/dz 
     # These loops can be optimized
     Dy_nuT    = np.zeros((Ny, Nz))
-    Dy_V      = np.zeros((Ny, Nz))
+    Dy_U      = np.zeros((Ny, Nz))
     for j in range(Nz):
         i=0
         Dy_nuT[i,j] = D1yfor(nuT_tilde, i, j)/dy
-        Dy_V[i,j] = D1yfor(v_tilde, i, j)/dy
+        Dy_U[i,j] = D1yfor(u_tilde, i, j)/dy
         for i in range(1,Ny-1):
             Dy_nuT[i,j] = D1y(nuT_tilde, i, j)/dy
-            Dy_V[i,j] = D1y(v_tilde, i, j)/dy
+            Dy_U[i,j] = D1y(u_tilde, i, j)/dy
         i=Ny-1
         Dy_nuT[i,j] = D1yback(nuT_tilde, i, j)/dy
-        Dy_V[i,j] = D1yback(v_tilde, i, j)/dy
+        Dy_U[i,j] = D1yback(u_tilde, i, j)/dy
 
     nu_total = np.ones((Ny, Nz))*nu + nuT_tilde/sigmaeps
     v_total  = v_tilde - Dy_nuT/sigmaeps
     w_total  = w_tilde - Dz_nuT/sigmaeps
 
     Tscale = TimeScale(phi_tilde['k'], phi_tilde['eps'], nu)
-    RHS_extra_forcing = C1eps/Tscale*(nuT_tilde*(Dy_V)**2 + nuT_tilde*(Dz_W)**2) - C2eps*eps_tilde/Tscale + feps_const
+    RHS_extra_forcing = C1eps/Tscale*(nuT_tilde*(Dy_U*Dy_U) + nuT_tilde*(Dz_U*Dz_U)) - C2eps*eps_tilde/Tscale + feps_const
     
     # First sweep: n -> n+1/2
     # -----------------------
@@ -774,6 +774,108 @@ def advanceSystemKEPS(phi_n, dx, dy, dz, params, allbcs, eqnsys, maxiter=100,
     # Check if k hit maxiter:
     # -->TODO!
     return phi_n1
+
+########################################################
+# Initial condition stuff
+def MO_windshear(z,L):
+    if L < 0:
+        return (1-16.0*(z/L))**(-0.25)
+
+    if L==float('inf'):
+        return np.ones_like(z)
+
+    return 1 + 5 * z/L
+
+def init_U_ABL(z,param):
+    """
+    Initialize ABL profile from Monin-Obukhov theory
+    """
+    z0    = param['z0']
+    L     = param['L']
+    K     = param['kappa']
+    rho   = param['rho']
+    ustar = param['ustar']
+
+    phim = MO_windshear(z,L)
+
+    if L < 0:
+        return ustar/K * (\
+                np.log(z/z0) + \
+                np.log( (8*phim**4) / ( (phim + 1)**2 * (phim**2 + 1))) -\
+                np.pi/2 + \
+                2 * np.arctan( 1/(phim)))
+    else:
+        return ustar/K * ( np.log(z/z0) + phim - 1)
+
+def init_e_ABL(z,param):
+    L     = param['L']
+    K     = param['kappa']
+    ustar = param['ustar']
+
+    phim = MO_windshear(z,L)
+
+    if L < 0:
+        phie = 1-z/L
+    elif L==float('inf'):
+        phie = phim
+    else:
+        phie = phim - z/L
+
+    return ustar**3/(K*z)*phie
+
+def init_k_ABL(z,param):
+    L     = param['L']
+    K     = param['kappa']
+    ustar = param['ustar']
+
+    phim  = MO_windshear(z,L)
+
+    if L < 0:
+        phie = 1-z/L
+    elif L==float('inf'):
+        phie = phim
+    else:
+        phie = phim - z/L
+
+    return 5.48 * ustar**2 * ( phie / phim )**0.5
+
+def applyStencil(D, u, j):
+    if D[0] == 0:
+        return D[1]*u[j] + D[2]*u[j+1]
+
+    if D[1] == 0:
+        return D[0]*u[j-1] + D[2]*u[j+1]
+
+    if D[2] == 0:
+        return D[0]*u[j-1] + D[1]*u[j] 
+
+    return D[0]*u[j-1] + D[1]*u[j] + D[2]*u[j+1]
+
+def set_e_init(zvec,dz,u,k,params):
+    Cmu = params['Cmu']
+    e_init = np.zeros_like(u)
+
+    Dcen   = np.array([-1,  0,  1])/(2*dz)
+    N = len(e_init)
+
+    for j in np.arange(1,N-1):
+        e_init[j] = np.sqrt(Cmu* k[j]**2 *applyStencil(Dcen,u,j)**2)
+
+    return e_init
+
+def set_k_init(rvec,dr,u,params,k_factor=0.1):
+    k_init = np.zeros_like(u)
+    Dcen   = np.array([-1,  0,  1])/(2*dr)
+    N = len(k_init)
+    for j in np.arange(1,N-1):
+        k_init[j] = applyStencil(Dcen,u,j)**2
+
+    # scale k 
+    kmax = np.max(k_init)
+    C = k_factor**2 * 2 / (3 * kmax) 
+    k_init *= C
+    return k_init
+
 
 ########################################################
 # Define the laminar equation system
