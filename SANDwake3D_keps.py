@@ -6,6 +6,15 @@ import copy
 from collections import OrderedDict
 from SANDwake3D_base import *
 
+def applyBCarray(bcdict, location, dz, j):
+    # Stencils
+    if bcdict['type'] == 'dirichlet':
+        return np.array([0,   1,  0]),  bcdict['value'][j]
+    elif bcdict['type'] == 'neumann':
+        Dstencil =  np.array([0,  -1,  1])/(dz) if location=='lower' else np.array([-1,  1,  0])/(dz)
+        return Dstencil, bcdict['value'][j]
+    return None
+
 def getPhiTilde(phi_np1, phi_n):
     """
     Get the averaged velocities for the convective term
@@ -715,7 +724,7 @@ def advanceMass(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, b
 
     # == Set up the LHS matrices ==
     for j in range(Nz):
-        row_lo, dentry_lo = applyBC(bc_ylo, 'lower', dy)
+        row_lo, dentry_lo = applyBCarray(bc_ylo, 'lower', dy, j)
         v_np1[:,j] = np.cumsum(RHS[:,j]) + dentry_lo
     
     # # == Set up the LHS matrices ==
