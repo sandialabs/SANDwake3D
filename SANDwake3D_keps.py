@@ -6,25 +6,6 @@ import copy
 from collections import OrderedDict
 from SANDwake3D_base import *
 
-def applyBCarray(bcdict, location, dz, j):
-    # Stencils
-    if bcdict['type'] == 'dirichlet':
-        return np.array([0,   1,  0]),  bcdict['value'][j]
-    elif bcdict['type'] == 'neumann':
-        Dstencil =  np.array([0,  -1,  1])/(dz) if location=='lower' else np.array([-1,  1,  0])/(dz)
-        return Dstencil, bcdict['value'][j]
-    return None
-
-def getPhiTilde(phi_np1, phi_n):
-    """
-    Get the averaged velocities for the convective term
-    """
-    varlist = [v for v, g in phi_n.items()]
-    phiTilde = {}
-    for v in varlist:
-        phiTilde[v] = 0.5*(phi_np1[v] + phi_n[v])
-    return phiTilde
-
 def RHS_u_nhalf(phi_np1, phi_n, Dz_nuT_tilde, dx, dy, dz, params):
     """
     Go from n to n+1/2 for the u-momentum equation
@@ -33,8 +14,7 @@ def RHS_u_nhalf(phi_np1, phi_n, Dz_nuT_tilde, dx, dy, dz, params):
     v_np1, v_n = phi_np1['v'], phi_n['v']
     w_np1, w_n = phi_np1['w'], phi_n['w']
     nuT_np1    = phi_np1['nuT']
-    #u_tilde, v_tilde, w_tilde = getTilde(phi_np1, phi_n)
-    phi_tilde = getPhiTilde(phi_np1, phi_n)
+    phi_tilde = getTildeVars(phi_np1, phi_n)
     u_tilde, v_tilde, w_tilde = phi_tilde['u'], phi_tilde['v'], phi_tilde['w']
     nuT_tilde = phi_tilde['nuT']
 
@@ -65,8 +45,7 @@ def RHS_u_np1(phi_np1, u_nhalf, phi_n, Dy_nuT_tilde, dx, dy, dz, params):
     u_np1, u_n = phi_np1['u'], phi_n['u']
     v_np1, v_n = phi_np1['v'], phi_n['v']
     w_np1, w_n = phi_np1['w'], phi_n['w']
-    #u_tilde, v_tilde, w_tilde = getTilde(phi_np1, phi_n)
-    phi_tilde = getPhiTilde(phi_np1, phi_n)
+    phi_tilde = getTildeVars(phi_np1, phi_n)
     u_tilde, v_tilde, w_tilde = phi_tilde['u'], phi_tilde['v'], phi_tilde['w']
     nuT_tilde = phi_tilde['nuT']
 
@@ -94,8 +73,7 @@ def advanceU(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc_z
     """
     Advance the u-momentum one full step
     """
-    #u_tilde, v_tilde, w_tilde = getTilde(phi_np1old, phi_n)
-    phi_tilde = getPhiTilde(phi_np1old, phi_n)
+    phi_tilde = getTildeVars(phi_np1old, phi_n)
     u_tilde, v_tilde, w_tilde = phi_tilde['u'], phi_tilde['v'], phi_tilde['w']
     nuT_tilde = phi_tilde['nuT']
     
@@ -193,8 +171,7 @@ def RHS_w_nhalf(phi_np1, phi_n, Dz_nuT_tilde, dx, dy, dz, params):
     u_np1, u_n = phi_np1['u'], phi_n['u']
     v_np1, v_n = phi_np1['v'], phi_n['v']
     w_np1, w_n = phi_np1['w'], phi_n['w']
-    #u_tilde, v_tilde, w_tilde = getTilde(phi_np1, phi_n)
-    phi_tilde = getPhiTilde(phi_np1, phi_n)
+    phi_tilde = getTildeVars(phi_np1, phi_n)
     u_tilde, v_tilde, w_tilde = phi_tilde['u'], phi_tilde['v'], phi_tilde['w']
     nuT_tilde = phi_tilde['nuT']
 
@@ -225,8 +202,7 @@ def RHS_w_np1(phi_np1, w_nhalf, phi_n, Dy_nuT_tilde, dx, dy, dz, params):
     u_np1, u_n = phi_np1['u'], phi_n['u']
     v_np1, v_n = phi_np1['v'], phi_n['v']
     w_np1, w_n = phi_np1['w'], phi_n['w']
-    #u_tilde, v_tilde, w_tilde = getTilde(phi_np1, phi_n)
-    phi_tilde = getPhiTilde(phi_np1, phi_n)
+    phi_tilde = getTildeVars(phi_np1, phi_n)
     u_tilde, v_tilde, w_tilde = phi_tilde['u'], phi_tilde['v'], phi_tilde['w']
     nuT_tilde = phi_tilde['nuT']
 
@@ -254,8 +230,7 @@ def advanceW(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc_z
     """
     Advance the W-momentum one full step
     """
-    #u_tilde, v_tilde, w_tilde = getTilde(phi_np1old, phi_n)
-    phi_tilde = getPhiTilde(phi_np1old, phi_n)
+    phi_tilde = getTildeVars(phi_np1old, phi_n)
     u_tilde, v_tilde, w_tilde = phi_tilde['u'], phi_tilde['v'], phi_tilde['w']
     nuT_tilde = phi_tilde['nuT']
 
@@ -350,7 +325,7 @@ def RHS_tke_nhalf(phi_np1, phi_n, Dz_nuT_tilde, dx, dy, dz, params):
     Go from n to n+1/2 for the TKE equation
     """
     k_n = phi_n['k']
-    phi_tilde = getPhiTilde(phi_np1, phi_n)
+    phi_tilde = getTildeVars(phi_np1, phi_n)
     u_tilde, v_tilde, w_tilde = phi_tilde['u'], phi_tilde['v'], phi_tilde['w']
     nuT_tilde = phi_tilde['nuT']
 
@@ -382,8 +357,7 @@ def RHS_tke_np1(phi_np1, tke_nhalf, phi_n, Dy_nuT_tilde, dx, dy, dz, params):
     u_np1, u_n = phi_np1['u'], phi_n['u']
     v_np1, v_n = phi_np1['v'], phi_n['v']
     w_np1, w_n = phi_np1['w'], phi_n['w']
-    #u_tilde, v_tilde, w_tilde = getTilde(phi_np1, phi_n)
-    phi_tilde = getPhiTilde(phi_np1, phi_n)
+    phi_tilde = getTildeVars(phi_np1, phi_n)
     u_tilde, v_tilde, w_tilde = phi_tilde['u'], phi_tilde['v'], phi_tilde['w']
     nuT_tilde = phi_tilde['nuT']
 
@@ -412,7 +386,7 @@ def advanceTKE(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc
     """
     Advance the TKE equation one full step
     """
-    phi_tilde = getPhiTilde(phi_np1old, phi_n)
+    phi_tilde = getTildeVars(phi_np1old, phi_n)
     u_tilde, v_tilde, w_tilde = phi_tilde['u'], phi_tilde['v'], phi_tilde['w']
     nuT_tilde = phi_tilde['nuT']
     k_tilde = phi_tilde['k']
@@ -520,7 +494,7 @@ def RHS_eps_nhalf(phi_np1, phi_n, Dz_nuT_tilde, dx, dy, dz, params):
     Go from n to n+1/2 for the EPS equation
     """
     eps_n     = phi_n['eps']
-    phi_tilde = getPhiTilde(phi_np1, phi_n)
+    phi_tilde = getTildeVars(phi_np1, phi_n)
     u_tilde, v_tilde, w_tilde = phi_tilde['u'], phi_tilde['v'], phi_tilde['w']
     nuT_tilde = phi_tilde['nuT']
 
@@ -552,8 +526,7 @@ def RHS_eps_np1(phi_np1, eps_nhalf, phi_n, Dy_nuT_tilde, dx, dy, dz, params):
     u_np1, u_n = phi_np1['u'], phi_n['u']
     v_np1, v_n = phi_np1['v'], phi_n['v']
     w_np1, w_n = phi_np1['w'], phi_n['w']
-    #u_tilde, v_tilde, w_tilde = getTilde(phi_np1, phi_n)
-    phi_tilde = getPhiTilde(phi_np1, phi_n)
+    phi_tilde = getTildeVars(phi_np1, phi_n)
     u_tilde, v_tilde, w_tilde = phi_tilde['u'], phi_tilde['v'], phi_tilde['w']
     nuT_tilde = phi_tilde['nuT']
 
@@ -582,8 +555,7 @@ def advanceEPS(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc
     """
     Advance the dissipation equation one full step
     """
-    #u_tilde, v_tilde, w_tilde = getTilde(phi_np1old, phi_n)
-    phi_tilde = getPhiTilde(phi_np1old, phi_n)
+    phi_tilde = getTildeVars(phi_np1old, phi_n)
     u_tilde, v_tilde, w_tilde = phi_tilde['u'], phi_tilde['v'], phi_tilde['w']
     nuT_tilde = phi_tilde['nuT']
     eps_tilde = phi_tilde['eps']
@@ -724,7 +696,8 @@ def advanceMass(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, b
 
     # == Set up the LHS matrices ==
     for j in range(Nz):
-        row_lo, dentry_lo = applyBCarray(bc_ylo, 'lower', dy, j)
+        row_lo, dentry_lo_lst = applyBC(bc_ylo, 'lower', dy)
+        dentry_lo = dentry_lo_lst[j]
         v_np1[:,j] = np.cumsum(RHS[:,j]) + dentry_lo
     
     # # == Set up the LHS matrices ==

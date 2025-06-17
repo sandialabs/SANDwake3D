@@ -14,7 +14,7 @@ def RHS_u_nhalf(phi_np1, phi_n, dx, dy, dz, params):
     u_np1, u_n = phi_np1['u'], phi_n['u']
     v_np1, v_n = phi_np1['v'], phi_n['v']
     w_np1, w_n = phi_np1['w'], phi_n['w']
-    u_tilde, v_tilde, w_tilde = getTilde(phi_np1, phi_n)
+    u_tilde, v_tilde, w_tilde = getTildeVel(phi_np1, phi_n)
 
     nu = params['nu']
     
@@ -50,7 +50,7 @@ def RHS_u_np1(phi_np1, u_nhalf, phi_n, dx, dy, dz, params):
     u_np1, u_n = phi_np1['u'], phi_n['u']
     v_np1, v_n = phi_np1['v'], phi_n['v']
     w_np1, w_n = phi_np1['w'], phi_n['w']
-    u_tilde, v_tilde, w_tilde = getTilde(phi_np1, phi_n)
+    u_tilde, v_tilde, w_tilde = getTildeVel(phi_np1, phi_n)
 
     nu = params['nu']
 
@@ -84,7 +84,7 @@ def advanceU(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc_z
     """
     Advance the u-momentum one full step
     """
-    u_tilde, v_tilde, w_tilde = getTilde(phi_np1old, phi_n)
+    u_tilde, v_tilde, w_tilde = getTildeVel(phi_np1old, phi_n)
     
     N  = u_tilde.shape
     Ny = N[0]
@@ -168,7 +168,7 @@ def RHS_w_nhalf(phi_np1, phi_n, dx, dy, dz, params):
     u_np1, u_n = phi_np1['u'], phi_n['u']
     v_np1, v_n = phi_np1['v'], phi_n['v']
     w_np1, w_n = phi_np1['w'], phi_n['w']
-    u_tilde, v_tilde, w_tilde = getTilde(phi_np1, phi_n)
+    u_tilde, v_tilde, w_tilde = getTildeVel(phi_np1, phi_n)
 
     nu = params['nu']
 
@@ -205,7 +205,7 @@ def RHS_w_np1(phi_np1, w_nhalf, phi_n, dx, dy, dz, params):
     u_np1, u_n = phi_np1['u'], phi_n['u']
     v_np1, v_n = phi_np1['v'], phi_n['v']
     w_np1, w_n = phi_np1['w'], phi_n['w']
-    u_tilde, v_tilde, w_tilde = getTilde(phi_np1, phi_n)
+    u_tilde, v_tilde, w_tilde = getTildeVel(phi_np1, phi_n)
 
     nu = params['nu']
 
@@ -238,7 +238,7 @@ def advanceW(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc_z
     """
     Advance the W-momentum one full step
     """
-    u_tilde, v_tilde, w_tilde = getTilde(phi_np1old, phi_n)
+    u_tilde, v_tilde, w_tilde = getTildeVel(phi_np1old, phi_n)
 
     N  = u_tilde.shape
     Ny = N[0]
