@@ -41,10 +41,6 @@ def main():
     ymax = 125
     yvec = np.linspace(-ymax, ymax, Ny)
 
-    Ny = 201
-    ymax = 20
-    yvec = np.linspace(0, ymax, Ny)
-
     # Set ABL parameters
     ABLparam = {
         "ustar": 0.4,  # 0.575652,
