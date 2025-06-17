@@ -251,3 +251,42 @@ $$
 \left[\frac{\tilde{U}}{\Delta x/2} + \left( \tilde{W} - \frac{D_z \tilde{\nu_T}}{\sigma\_k \Delta z} \right) \frac{D_z }{\Delta z} - (\nu + \frac{\tilde{\nu_T}}{\sigma\_k}) \frac{D_z^2 }{(\Delta z)^2} \right] \varepsilon_{ij}^{n+1} =
 \left[ \frac{\tilde{U}}{\Delta x/2} - \left( \tilde{V} - \frac{D_y \tilde{\nu_T}}{\sigma\_k \Delta y} \right) \frac{D_y }{\Delta y} + (\nu + \frac{\tilde{\nu_T}}{\sigma\_k}) \frac{D_y^2 }{(\Delta y)^2} \right] \varepsilon_{ij}^{n+1/2} + F_\varepsilon^{n+1/2}
 $$
+
+#### Potential Temperature
+
+$$
+U \frac{\partial \Theta}{\partial x} + V \frac{\partial \Theta}{\partial y} + W \frac{\partial \Theta}{\partial z} = \frac{\partial}{\partial y} \frac{\nu_t}{\sigma_T} \frac{\partial \Theta}{\partial y} + \frac{\partial}{\partial z} \frac{\nu_t}{\sigma_T} \frac{\partial \Theta}{\partial z} 
+$$
+
+$$
+U \frac{\partial \Theta}{\partial x} + V \frac{\partial \Theta}{\partial y} + W \frac{\partial \Theta}{\partial z} = \frac{\nu_t}{\sigma_T}  \frac{\partial^2 \Theta}{\partial^2 y} + \frac{\nu_t}{\sigma_T} \frac{\partial^2 \Theta}{\partial^2 z} + \left( \frac{\partial}{\partial y} \frac{\nu_t}{\sigma_T} \right) \frac{\partial \Theta}{\partial y}
++ \left( \frac{\partial}{\partial z} \frac{\nu_t}{\sigma_T} \right) \frac{\partial \Theta}{\partial z}
+$$
+
+$$
+U \frac{\partial \Theta}{\partial x} +
+\left( V - \frac{\partial}{\partial y} \frac{\nu_t}{\sigma_T} \right) \frac{\partial \Theta}{\partial y}
++  \left( W - \frac{\partial}{\partial z} \frac{\nu_t}{\sigma_T} \right) \frac{\partial \Theta}{\partial z} = \frac{\nu_t}{\sigma_T}  \frac{\partial^2 \Theta}{\partial^2 y} + \frac{\nu_t}{\sigma_T} \frac{\partial^2 \Theta}{\partial^2 z} 
+$$
+
+**First half-step**
+
+$$
+\left[
+\frac{ \tilde{U}}{\Delta x/2} + \left( \tilde{V} - \frac{D_y \tilde{\nu_T}}{\sigma_T \Delta y} \right) \frac{D_y}{\Delta y} - ({ \tilde{\nu_T}\over \sigma_T}) \frac{D_y^2 }{(\Delta y)^2}
+\right] \Theta^{n+1/2}_{ij} = 
+\left[
+\frac{\tilde{U}}{\Delta x/2} - \left( \tilde{W} - \frac{D_z \tilde{\nu_T}}{\sigma_T \Delta z} \right) \frac{D_z }{\Delta z} + ({\tilde{\nu_T} \over \sigma_T}) \frac{D_z^2}{(\Delta z)^2}
+\right] \Theta^{n}_{ij}
+$$
+
+**Second half-step**
+
+$$
+\left[ \frac{\tilde{U}}{\Delta x/2} + \left( \tilde{W} - \frac{D_z \tilde{\nu_T}}{\sigma_T \Delta z} \right) \frac{D_z }{\Delta z} - (\frac{\tilde{\nu_T}}{\sigma_T}) \frac{D_z^2 }{(\Delta z)^2} \right] \Theta^{n+1}_{ij}
+=
+\left[
+\frac{\tilde{U}}{\Delta x/2} - \left( \tilde{V} - \frac{D_y \tilde{\nu_T}}{\sigma_T \Delta y} \right) \frac{D_y }{\Delta y} + (\frac{\tilde{\nu_T}}{\sigma_T}) \frac{D_y^2 }{(\Delta y)^2}
+\right] \Theta^{n+1/2}_{ij}
+$$
+
