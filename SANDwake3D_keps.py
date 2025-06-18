@@ -8,15 +8,15 @@ from SANDwake3D_base import *
 from functools import partial
 
 
-def RHS_f_nhalf(phi_np1, phi_n, Dz_nuT_tilde, nuT_scale, dx, dy, dz, params, field):
+def RHS_f_nhalf(phi_np1, phi_n, Dz_nuT_tilde, dx, dy, dz, params, field):
     """
     Go from n to n+1/2
     """
     vel_n = phi_n[field]
     phi_tilde = getTildeVars(phi_np1, phi_n)
     u_tilde, w_tilde = phi_tilde['u'], phi_tilde['w']
-    nu_total = params['nu'] + phi_tilde['nuT'] / nuT_scale
-    w_total  = w_tilde - Dz_nuT_tilde  / nuT_scale
+    nu_total = params['nu'] + phi_tilde['nuT']
+    w_total  = w_tilde - Dz_nuT_tilde
 
     inv_dx = 1.0 / dx
     inv_dz = 1.0 / dz
@@ -44,7 +44,7 @@ def RHS_f_nhalf(phi_np1, phi_n, Dz_nuT_tilde, nuT_scale, dx, dy, dz, params, fie
 
     return RHS
 
-def RHS_f_np1(phi_np1, f_nhalf, phi_n, Dy_nuT_tilde, nuT_scale, dx, dy, dz, params):
+def RHS_f_np1(phi_np1, f_nhalf, phi_n, Dy_nuT_tilde, dx, dy, dz, params):
     """
     Go from n+1/2 to n+1 for the u-momentum equation
     """
@@ -110,7 +110,7 @@ def advanceF(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc_z
     # First sweep: n -> n+1/2
     # -----------------------
     f_nhalf   = np.zeros((Ny, Nz))
-    RHS_nhalf = RHS_f_nhalf(phi_np1old, phi_n, Dz_nuT, 1.0, dx, dy, dz, params, field) + fx_const
+    RHS_nhalf = RHS_f_nhalf(phi_np1old, phi_n, Dz_nuT, dx, dy, dz, params, field) + fx_const
     inv_half_dx = 2.0 / dx
     inv_dy = 1.0 / dy
     inv_dy2 = 1.0 / (dy * dy)
@@ -139,7 +139,7 @@ def advanceF(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc_z
     # Second sweep: n+1/2 -> n+1
     # -----------------------
     f_np1   = np.zeros((Ny, Nz))
-    RHS_np1 = RHS_f_np1(phi_np1old, f_nhalf, phi_n, Dy_nuT, 1.0, dx, dy, dz, params) + fx_const
+    RHS_np1 = RHS_f_np1(phi_np1old, f_nhalf, phi_n, Dy_nuT, dx, dy, dz, params) + fx_const
     # == Set up the LHS matrices ==
     row_lo_base, dentry_lo_base = applyBC(bc_zlo, 'lower', dz)
     row_hi_base, dentry_hi_base = applyBC(bc_zhi, 'upper', dz)
