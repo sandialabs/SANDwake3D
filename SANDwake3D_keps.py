@@ -587,36 +587,23 @@ def init_k_ABL(z,param):
 
     return 5.48 * ustar**2 * ( phie / phim )**0.5
 
-def applyStencil(D, u, j):
-    if D[0] == 0:
-        return D[1]*u[j] + D[2]*u[j+1]
-
-    if D[1] == 0:
-        return D[0]*u[j-1] + D[2]*u[j+1]
-
-    if D[2] == 0:
-        return D[0]*u[j-1] + D[1]*u[j] 
-
-    return D[0]*u[j-1] + D[1]*u[j] + D[2]*u[j+1]
-
 def set_e_init(zvec,dz,u,k,params):
     Cmu = params['Cmu']
     e_init = np.zeros_like(u)
 
     Dcen   = np.array([-1,  0,  1])/(2*dz)
-    N = len(e_init)
-
-    for j in np.arange(1,N-1):
-        e_init[j] = np.sqrt(Cmu* k[j]**2 *applyStencil(Dcen,u,j)**2)
+    e_init[1:-1] = np.sqrt(Cmu * k[1:-1]**2 * (
+        Dcen[0] * u[:-2] + Dcen[1] * u[1:-1] + Dcen[2] * u[2:]
+    )**2)
 
     return e_init
 
 def set_k_init(rvec,dr,u,params,k_factor=0.1):
     k_init = np.zeros_like(u)
     Dcen   = np.array([-1,  0,  1])/(2*dr)
-    N = len(k_init)
-    for j in np.arange(1,N-1):
-        k_init[j] = applyStencil(Dcen,u,j)**2
+    k_init[1:-1] = (
+        Dcen[0] * u[:-2] + Dcen[1] * u[1:-1] + Dcen[2] * u[2:]
+    ) ** 2
 
     # scale k 
     kmax = np.max(k_init)
