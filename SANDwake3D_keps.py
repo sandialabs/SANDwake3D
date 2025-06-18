@@ -456,39 +456,15 @@ def advanceMass(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, b
     return v^(n+1)
     """
     u_np1, u_n = phi_np1old['u'], phi_n['u']
-    v_np1, v_n = phi_np1old['v'], phi_n['v']
-    w_np1, w_n = phi_np1old['w'], phi_n['w']
+    v_np1 = phi_np1old['v']
+    w_np1 = phi_np1old['w']
 
-    N  = u_n.shape
-    Ny = N[0]
-    Nz = N[1]
-
-    # --- differentiation stencils ---
-    #                  j-1  j  j+1
-    Irow   = np.array([0,   1,  0])
-    Dcen   = np.array([-1,  0,  1])*0.5
-    D2cen  = np.array([1,  -2,  1])
-    # -------------------------------
-
-    v_np1   = np.zeros((Ny, Nz))
-
-    Dz_w    = np.zeros((Ny, Nz))
-    # Note: This loop can definitely be optimized
-    for i in range(Ny):
-        for j in range(Nz):
-            if j==0:
-                Dz_w[i,j] = (w_np1[i,j+1] - w_np1[i,j])/dz
-            elif j==Nz-1:
-                Dz_w[i,j] = (w_np1[i,j] - w_np1[i,j-1])/dz
-            else:
-                Dz_w[i,j] = D1z(w_np1, i, j)/dz #0.5*(w[i,j+1] - w[i,j-1])/dz
+    Dz_w = np.gradient(w_np1, dz, axis=1, edge_order=1)
     RHS     = -dy*(u_np1 - u_n)/(dx) - dy*Dz_w
 
     # == Set up the LHS matrices ==
-    for j in range(Nz):
-        row_lo, dentry_lo_lst = applyBC(bc_ylo, 'lower', dy)
-        dentry_lo = dentry_lo_lst[j]
-        v_np1[:,j] = np.cumsum(RHS[:,j]) + dentry_lo
+    row_lo, dentry_lo = applyBC(bc_ylo, 'lower', dy)
+    v_np1 = np.cumsum(RHS, axis=0) + dentry_lo
     
     # # == Set up the LHS matrices ==
     # for j in range(Nz):
