@@ -10,63 +10,69 @@ def RHS_u_nhalf(phi_np1, phi_n, Dz_nuT_tilde, dx, dy, dz, params):
     """
     Go from n to n+1/2 for the u-momentum equation
     """
-    u_np1, u_n = phi_np1['u'], phi_n['u']
-    v_np1, v_n = phi_np1['v'], phi_n['v']
-    w_np1, w_n = phi_np1['w'], phi_n['w']
-    nuT_np1    = phi_np1['nuT']
+    u_n = phi_n['u']
     phi_tilde = getTildeVars(phi_np1, phi_n)
-    u_tilde, v_tilde, w_tilde = phi_tilde['u'], phi_tilde['v'], phi_tilde['w']
-    nuT_tilde = phi_tilde['nuT']
-
-    nu = params['nu']
-    
-    N  = u_n.shape
-    Ny = N[0]
-    Nz = N[1]
-
-    nu_total = np.ones((Ny, Nz))*nu + nuT_tilde
+    u_tilde, w_tilde = phi_tilde['u'], phi_tilde['w']
+    nu_total = params['nu'] + phi_tilde['nuT']
     w_total  = w_tilde - Dz_nuT_tilde
 
-    RHS = np.zeros((Ny, Nz))
-    # These loops can be optimized
-    for i in range(Ny):
-        j=0
-        RHS[i,j] = u_tilde[i,j]*u_n[i,j]/(0.5*dx) - w_total[i,j]/dz*D1zfor(u_n, i, j) + nu_total[i,j]*D2zfor(u_n, i, j)/(dz*dz)  
-        for j in range(1,Nz-1):
-            RHS[i,j] = u_tilde[i,j]*u_n[i,j]/(0.5*dx) - w_total[i,j]/dz*D1z(u_n, i, j) + nu_total[i,j]*D2z(u_n, i, j)/(dz*dz)
-        j=Nz-1
-        RHS[i,j] = u_tilde[i,j]*u_n[i,j]/(0.5*dx) - w_total[i,j]/dz*D1zback(u_n, i, j) + nu_total[i,j]*D2zback(u_n, i, j)/(dz*dz)
+    inv_dx = 1.0 / dx
+    inv_dz = 1.0 / dz
+    inv_dz2 = 1.0 / (dz * dz)
+    inv_half_dx = 2.0 * inv_dx
+
+    RHS = np.empty_like(u_n)
+    RHS[:, 0] = (
+        u_tilde[:, 0] * u_n[:, 0] * inv_half_dx
+        - w_total[:, 0] * inv_dz * (u_n[:, 1] - u_n[:, 0])
+        + nu_total[:, 0] * inv_dz2 * (u_n[:, 0] - 2.0 * u_n[:, 1] + u_n[:, 2])
+    )
+
+    RHS[:, 1:-1] = (
+        u_tilde[:, 1:-1] * u_n[:, 1:-1] * inv_half_dx
+        - w_total[:, 1:-1] * inv_dz * 0.5 * (u_n[:, 2:] - u_n[:, :-2])
+        + nu_total[:, 1:-1] * inv_dz2 * (u_n[:, 2:] - 2.0 * u_n[:, 1:-1] + u_n[:, :-2])
+    )
+
+    RHS[:, -1] = (
+        u_tilde[:, -1] * u_n[:, -1] * inv_half_dx
+        - w_total[:, -1] * inv_dz * (u_n[:, -1] - u_n[:, -2])
+        + nu_total[:, -1] * inv_dz2 * (u_n[:, -1] - 2.0 * u_n[:, -2] + u_n[:, -3])
+    )
+
     return RHS
 
 def RHS_u_np1(phi_np1, u_nhalf, phi_n, Dy_nuT_tilde, dx, dy, dz, params):
     """
     Go from n+1/2 to n+1 for the u-momentum equation
     """
-    u_np1, u_n = phi_np1['u'], phi_n['u']
-    v_np1, v_n = phi_np1['v'], phi_n['v']
-    w_np1, w_n = phi_np1['w'], phi_n['w']
     phi_tilde = getTildeVars(phi_np1, phi_n)
-    u_tilde, v_tilde, w_tilde = phi_tilde['u'], phi_tilde['v'], phi_tilde['w']
-    nuT_tilde = phi_tilde['nuT']
-
-    nu = params['nu']
-    
-    N  = u_n.shape
-    Ny = N[0]
-    Nz = N[1]
-    RHS = np.zeros((Ny, Nz))
-            
-    nu_total = np.ones((Ny, Nz))*nu + nuT_tilde
+    u_tilde, v_tilde = phi_tilde['u'], phi_tilde['v']
+    nu_total = params['nu'] + phi_tilde['nuT']
     v_total  = v_tilde - Dy_nuT_tilde
 
-    # These loops can be optimized
-    for j in range(Nz):
-        i=0
-        RHS[i,j] = u_tilde[i,j]*u_nhalf[i,j]/(0.5*dx) - v_total[i,j]/dy*D1yfor(u_nhalf, i, j) + nu_total[i,j]*D2yfor(u_nhalf, i, j)/(dy*dy)
-        for i in range(1,Ny-1):
-            RHS[i,j] = u_tilde[i,j]*u_nhalf[i,j]/(0.5*dx) - v_total[i,j]/dy*D1y(u_nhalf, i, j) + nu_total[i,j]*D2y(u_nhalf, i, j)/(dy*dy)
-        i=Ny-1
-        RHS[i,j] = u_tilde[i,j]*u_nhalf[i,j]/(0.5*dx) - v_total[i,j]/dy*D1yback(u_nhalf, i, j) + nu_total[i,j]*D2yback(u_nhalf, i, j)/(dy*dy) 
+    inv_half_dx = 2.0 / dx
+    inv_dy = 1.0 / dy
+    inv_dy2 = 1.0 / (dy * dy)
+
+    RHS = np.empty_like(u_nhalf)
+    RHS[0, :] = (
+    u_tilde[0, :] * u_nhalf[0, :] * inv_half_dx
+    - v_total[0, :] * inv_dy * (u_nhalf[1, :] - u_nhalf[0, :])
+    + nu_total[0, :] * inv_dy2 * (u_nhalf[0, :] - 2.0 * u_nhalf[1, :] + u_nhalf[2, :])
+    )
+
+    RHS[1:-1, :] = (
+        u_tilde[1:-1, :] * u_nhalf[1:-1, :] * inv_half_dx
+        - v_total[1:-1, :] * inv_dy * 0.5 * (u_nhalf[2:, :] - u_nhalf[:-2, :])
+        + nu_total[1:-1, :] * inv_dy2 * (u_nhalf[2:, :] - 2.0 * u_nhalf[1:-1, :] + u_nhalf[:-2, :])
+    )
+
+    RHS[-1, :] = (
+        u_tilde[-1, :] * u_nhalf[-1, :] * inv_half_dx
+        - v_total[-1, :] * inv_dy * (u_nhalf[-1, :] - u_nhalf[-2, :])
+        + nu_total[-1, :] * inv_dy2 * (u_nhalf[-1, :] - 2.0 * u_nhalf[-2, :] + u_nhalf[-3, :])
+    )
     return RHS
 
 def advanceU(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc_zhi):
@@ -93,27 +99,9 @@ def advanceU(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc_z
     # -------------------------------
 
     # Compute some quantities related to nuT
-    Dz_nuT    = np.zeros((Ny, Nz))
-    # Note: This loop can definitely be optimized
-    for i in range(Ny):
-        for j in range(Nz):
-            if j==0:
-                Dz_nuT[i,j] = (nuT_tilde[i,j+1] - nuT_tilde[i,j])/dz
-            elif j==Nz-1:
-                Dz_nuT[i,j] = (nuT_tilde[i,j] - nuT_tilde[i,j-1])/dz
-            else:
-                Dz_nuT[i,j] = D1z(nuT_tilde, i, j)/dz 
-    # These loops can be optimized
-    Dy_nuT    = np.zeros((Ny, Nz))
-    for j in range(Nz):
-        i=0
-        Dy_nuT[i,j] = D1yfor(nuT_tilde, i, j)/dy
-        for i in range(1,Ny-1):
-            Dy_nuT[i,j] = D1y(nuT_tilde, i, j)/dy
-        i=Ny-1
-        Dy_nuT[i,j] = D1yback(nuT_tilde, i, j)/dy
+    Dy_nuT, Dz_nuT = np.gradient(nuT_tilde, dy, dz, edge_order=1)
 
-    nu_total = np.ones((Ny, Nz))*nu + nuT_tilde
+    nu_total = nu + nuT_tilde
     v_total  = v_tilde - Dy_nuT
     w_total  = w_tilde - Dz_nuT
 
@@ -182,7 +170,7 @@ def RHS_w_nhalf(phi_np1, phi_n, Dz_nuT_tilde, dx, dy, dz, params):
     Nz = N[1]
     RHS = np.zeros((Ny, Nz))
 
-    nu_total = np.ones((Ny, Nz))*nu + nuT_tilde
+    nu_total = nu + nuT_tilde
     w_total  = w_tilde - Dz_nuT_tilde
 
     # These loops can be optimized
@@ -213,7 +201,7 @@ def RHS_w_np1(phi_np1, w_nhalf, phi_n, Dy_nuT_tilde, dx, dy, dz, params):
     Nz = N[1]
     RHS = np.zeros((Ny, Nz))
     
-    nu_total = np.ones((Ny, Nz))*nu + nuT_tilde
+    nu_total = nu + nuT_tilde
     v_total  = v_tilde - Dy_nuT_tilde
 
     # These loops can be optimized
@@ -250,27 +238,9 @@ def advanceW(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc_z
     # -------------------------------
 
     # Compute some quantities related to nuT
-    Dz_nuT    = np.zeros((Ny, Nz))
-    # Note: This loop can definitely be optimized
-    for i in range(Ny):
-        for j in range(Nz):
-            if j==0:
-                Dz_nuT[i,j] = (nuT_tilde[i,j+1] - nuT_tilde[i,j])/dz
-            elif j==Nz-1:
-                Dz_nuT[i,j] = (nuT_tilde[i,j] - nuT_tilde[i,j-1])/dz
-            else:
-                Dz_nuT[i,j] = D1z(nuT_tilde, i, j)/dz 
-    # These loops can be optimized
-    Dy_nuT    = np.zeros((Ny, Nz))
-    for j in range(Nz):
-        i=0
-        Dy_nuT[i,j] = D1yfor(nuT_tilde, i, j)/dy
-        for i in range(1,Ny-1):
-            Dy_nuT[i,j] = D1y(nuT_tilde, i, j)/dy
-        i=Ny-1
-        Dy_nuT[i,j] = D1yback(nuT_tilde, i, j)/dy
+    Dy_nuT, Dz_nuT = np.gradient(nuT_tilde, dy, dz, edge_order=1)
 
-    nu_total = np.ones((Ny, Nz))*nu + nuT_tilde
+    nu_total = nu + nuT_tilde
     v_total  = v_tilde - Dy_nuT
     w_total  = w_tilde - Dz_nuT
 
@@ -337,7 +307,7 @@ def RHS_tke_nhalf(phi_np1, phi_n, Dz_nuT_tilde, dx, dy, dz, params):
     Nz = N[1]
     RHS = np.zeros((Ny, Nz))
 
-    nu_total = np.ones((Ny, Nz))*nu + nuT_tilde/sigmak
+    nu_total = nu + nuT_tilde/sigmak
     w_total  = w_tilde - Dz_nuT_tilde/sigmak
 
     # These loops can be optimized
@@ -369,7 +339,7 @@ def RHS_tke_np1(phi_np1, tke_nhalf, phi_n, Dy_nuT_tilde, dx, dy, dz, params):
     Nz = N[1]
     RHS = np.zeros((Ny, Nz))
     
-    nu_total = np.ones((Ny, Nz))*nu + nuT_tilde/sigmak
+    nu_total = nu + nuT_tilde/sigmak
     v_total  = v_tilde - Dy_nuT_tilde/sigmak
 
     # These loops can be optimized
@@ -408,37 +378,11 @@ def advanceTKE(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc
     D2cen  = np.array([1,  -2,  1])
     # -------------------------------
 
-    # Compute some quantities related to nuT
-    Dz_nuT    = np.zeros((Ny, Nz))
-    Dz_U      = np.zeros((Ny, Nz))
-    # Note: This loop can definitely be optimized
-    for i in range(Ny):
-        for j in range(Nz):
-            if j==0:
-                Dz_nuT[i,j] = (nuT_tilde[i,j+1] - nuT_tilde[i,j])/dz
-                Dz_U[i,j]   = (u_tilde[i,j+1] - u_tilde[i,j])/dz               
-            elif j==Nz-1:
-                Dz_nuT[i,j] = (nuT_tilde[i,j] - nuT_tilde[i,j-1])/dz
-                Dz_U[i,j]   = (u_tilde[i,j] - u_tilde[i,j-1])/dz
-            else:
-                Dz_nuT[i,j] = D1z(nuT_tilde, i, j)/dz
-                Dz_U[i,j]   = D1z(u_tilde, i, j)/dz
-                
-    # These loops can be optimized
-    Dy_nuT    = np.zeros((Ny, Nz))
-    Dy_U      = np.zeros((Ny, Nz))
-    for j in range(Nz):
-        i=0
-        Dy_nuT[i,j] = D1yfor(nuT_tilde, i, j)/dy
-        Dy_U[i,j] = D1yfor(u_tilde, i, j)/dy
-        for i in range(1,Ny-1):
-            Dy_nuT[i,j] = D1y(nuT_tilde, i, j)/dy
-            Dy_U[i,j] = D1y(u_tilde, i, j)/dy
-        i=Ny-1
-        Dy_nuT[i,j] = D1yback(nuT_tilde, i, j)/dy
-        Dy_U[i,j] = D1yback(u_tilde, i, j)/dy
+    # Compute some quantities
+    Dy_nuT, Dz_nuT = np.gradient(nuT_tilde, dy, dz, edge_order=1)
+    Dy_U, Dz_U = np.gradient(u_tilde, dy, dz, edge_order=1)
 
-    nu_total = np.ones((Ny, Nz))*nu + nuT_tilde/sigmak
+    nu_total = nu + nuT_tilde/sigmak
     v_total  = v_tilde - Dy_nuT/sigmak
     w_total  = w_tilde - Dz_nuT/sigmak
 
@@ -506,7 +450,7 @@ def RHS_eps_nhalf(phi_np1, phi_n, Dz_nuT_tilde, dx, dy, dz, params):
     Nz = N[1]
     RHS = np.zeros((Ny, Nz))
 
-    nu_total = np.ones((Ny, Nz))*nu + nuT_tilde/sigmaeps
+    nu_total = nu + nuT_tilde/sigmaeps
     w_total  = w_tilde - Dz_nuT_tilde/sigmaeps
 
     # These loops can be optimized
@@ -538,7 +482,7 @@ def RHS_eps_np1(phi_np1, eps_nhalf, phi_n, Dy_nuT_tilde, dx, dy, dz, params):
     Nz = N[1]
     RHS = np.zeros((Ny, Nz))
     
-    nu_total = np.ones((Ny, Nz))*nu + nuT_tilde/sigmaeps
+    nu_total = nu + nuT_tilde/sigmaeps
     v_total  = v_tilde - Dy_nuT_tilde/sigmaeps
 
     # These loops can be optimized
@@ -579,36 +523,11 @@ def advanceEPS(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc
     D2cen  = np.array([1,  -2,  1])
     # -------------------------------
 
-    # Compute some quantities related to nuT
-    Dz_nuT    = np.zeros((Ny, Nz))
-    Dz_U      = np.zeros((Ny, Nz))
-    # Note: This loop can definitely be optimized
-    for i in range(Ny):
-        for j in range(Nz):
-            if j==0:
-                Dz_nuT[i,j] = (nuT_tilde[i,j+1] - nuT_tilde[i,j])/dz
-                Dz_U[i,j]   = (u_tilde[i,j+1] - u_tilde[i,j])/dz
-            elif j==Nz-1:
-                Dz_nuT[i,j] = (nuT_tilde[i,j] - nuT_tilde[i,j-1])/dz
-                Dz_U[i,j]   = (u_tilde[i,j] - u_tilde[i,j-1])/dz
-            else:
-                Dz_nuT[i,j] = D1z(nuT_tilde, i, j)/dz
-                Dz_U[i,j] = D1z(u_tilde, i, j)/dz 
-    # These loops can be optimized
-    Dy_nuT    = np.zeros((Ny, Nz))
-    Dy_U      = np.zeros((Ny, Nz))
-    for j in range(Nz):
-        i=0
-        Dy_nuT[i,j] = D1yfor(nuT_tilde, i, j)/dy
-        Dy_U[i,j] = D1yfor(u_tilde, i, j)/dy
-        for i in range(1,Ny-1):
-            Dy_nuT[i,j] = D1y(nuT_tilde, i, j)/dy
-            Dy_U[i,j] = D1y(u_tilde, i, j)/dy
-        i=Ny-1
-        Dy_nuT[i,j] = D1yback(nuT_tilde, i, j)/dy
-        Dy_U[i,j] = D1yback(u_tilde, i, j)/dy
+    # Compute some quantities
+    Dy_nuT, Dz_nuT = np.gradient(nuT_tilde, dy, dz, edge_order=1)
+    Dy_U, Dz_U = np.gradient(u_tilde, dy, dz, edge_order=1)
 
-    nu_total = np.ones((Ny, Nz))*nu + nuT_tilde/sigmaeps
+    nu_total = nu + nuT_tilde/sigmaeps
     v_total  = v_tilde - Dy_nuT/sigmaeps
     w_total  = w_tilde - Dz_nuT/sigmaeps
 
