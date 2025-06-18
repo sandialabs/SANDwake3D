@@ -8,12 +8,11 @@ from SANDwake3D_base import *
 from functools import partial
 
 
-def RHS_f_nhalf(phi_np1, phi_n, Dz_nuT_tilde, dx, dy, dz, params, field):
+def RHS_f_nhalf(phi_np1, phi_n, phi_tilde, Dz_nuT_tilde, dx, dy, dz, params, field):
     """
     Go from n to n+1/2
     """
     vel_n = phi_n[field]
-    phi_tilde = getTildeVars(phi_np1, phi_n)
     u_tilde, w_tilde = phi_tilde['u'], phi_tilde['w']
     nu_total = params['nu'] + phi_tilde['nuT']
     w_total  = w_tilde - Dz_nuT_tilde
@@ -44,11 +43,10 @@ def RHS_f_nhalf(phi_np1, phi_n, Dz_nuT_tilde, dx, dy, dz, params, field):
 
     return RHS
 
-def RHS_f_np1(phi_np1, f_nhalf, phi_n, Dy_nuT_tilde, dx, dy, dz, params):
+def RHS_f_np1(f_nhalf, phi_np1, phi_n, phi_tilde, Dy_nuT_tilde, dx, dy, dz, params):
     """
     Go from n+1/2 to n+1 for the u-momentum equation
     """
-    phi_tilde = getTildeVars(phi_np1, phi_n)
     u_tilde, v_tilde = phi_tilde['u'], phi_tilde['v']
     nu_total = params['nu'] + phi_tilde['nuT']
     v_total  = v_tilde - Dy_nuT_tilde
@@ -110,7 +108,7 @@ def advanceF(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc_z
     # First sweep: n -> n+1/2
     # -----------------------
     f_nhalf   = np.zeros((Ny, Nz))
-    RHS_nhalf = RHS_f_nhalf(phi_np1old, phi_n, Dz_nuT, dx, dy, dz, params, field) + fx_const
+    RHS_nhalf = RHS_f_nhalf(phi_np1old, phi_n, phi_tilde, Dz_nuT, dx, dy, dz, params, field) + fx_const
     inv_half_dx = 2.0 / dx
     inv_dy = 1.0 / dy
     inv_dy2 = 1.0 / (dy * dy)
@@ -139,7 +137,7 @@ def advanceF(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc_z
     # Second sweep: n+1/2 -> n+1
     # -----------------------
     f_np1   = np.zeros((Ny, Nz))
-    RHS_np1 = RHS_f_np1(phi_np1old, f_nhalf, phi_n, Dy_nuT, dx, dy, dz, params) + fx_const
+    RHS_np1 = RHS_f_np1(f_nhalf, phi_np1old, phi_n, phi_tilde, Dy_nuT, dx, dy, dz, params) + fx_const
     # == Set up the LHS matrices ==
     row_lo_base, dentry_lo_base = applyBC(bc_zlo, 'lower', dz)
     row_hi_base, dentry_hi_base = applyBC(bc_zhi, 'upper', dz)
@@ -167,12 +165,11 @@ def advanceF(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc_z
         #print('f_np1 = ',f_np1[i,:])
     return f_np1
 
-def RHS_tke_nhalf(phi_np1, phi_n, Dz_nuT_tilde, dx, dy, dz, params):
+def RHS_tke_nhalf(phi_np1, phi_n, phi_tilde, Dz_nuT_tilde, dx, dy, dz, params):
     """
     Go from n to n+1/2 for the TKE equation
     """
     k_n = phi_n['k']
-    phi_tilde = getTildeVars(phi_np1, phi_n)
     u_tilde, v_tilde, w_tilde = phi_tilde['u'], phi_tilde['v'], phi_tilde['w']
     nuT_tilde = phi_tilde['nuT']
 
@@ -197,14 +194,13 @@ def RHS_tke_nhalf(phi_np1, phi_n, Dz_nuT_tilde, dx, dy, dz, params):
         RHS[i,j] = u_tilde[i,j]*k_n[i,j]/(0.5*dx) - w_total[i,j]/dz*D1zback(k_n, i, j) + nu_total[i,j]*D2zback(k_n, i, j)/(dz*dz)
     return RHS
 
-def RHS_tke_np1(phi_np1, tke_nhalf, phi_n, Dy_nuT_tilde, dx, dy, dz, params):
+def RHS_tke_np1(tke_nhalf, phi_np1, phi_n, phi_tilde, Dy_nuT_tilde, dx, dy, dz, params):
     """
     Go from n+1/2 to n+1 for the TKE equation
     """
     u_np1, u_n = phi_np1['u'], phi_n['u']
     v_np1, v_n = phi_np1['v'], phi_n['v']
     w_np1, w_n = phi_np1['w'], phi_n['w']
-    phi_tilde = getTildeVars(phi_np1, phi_n)
     u_tilde, v_tilde, w_tilde = phi_tilde['u'], phi_tilde['v'], phi_tilde['w']
     nuT_tilde = phi_tilde['nuT']
 
@@ -268,7 +264,7 @@ def advanceTKE(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc
     # First sweep: n -> n+1/2
     # -----------------------
     tke_nhalf   = np.zeros((Ny, Nz))
-    RHS_nhalf = RHS_tke_nhalf(phi_np1old, phi_n, Dz_nuT, dx, dy, dz, params) + RHS_extra_forcing
+    RHS_nhalf = RHS_tke_nhalf(phi_np1old, phi_n, phi_tilde, Dz_nuT, dx, dy, dz, params) + RHS_extra_forcing
     for j in range(Nz):
         LHS_nhalf = np.zeros((Ny,3))
         # == Set up the LHS matrices ==
@@ -287,7 +283,7 @@ def advanceTKE(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc
     # Second sweep: n+1/2 -> n+1
     # -----------------------
     tke_np1   = np.zeros((Ny, Nz))
-    RHS_np1 = RHS_tke_np1(phi_np1old, tke_nhalf, phi_n, Dy_nuT, dx, dy, dz, params) + RHS_extra_forcing
+    RHS_np1 = RHS_tke_np1(tke_nhalf, phi_np1old, phi_n, phi_tilde, Dy_nuT, dx, dy, dz, params) + RHS_extra_forcing
     # == Set up the LHS matrices ==
     for i in range(Ny):
         LHS_np1 = np.zeros((Nz,3))
@@ -310,12 +306,11 @@ def advanceTKE(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc
 
     return tke_np1
 
-def RHS_eps_nhalf(phi_np1, phi_n, Dz_nuT_tilde, dx, dy, dz, params):
+def RHS_eps_nhalf(phi_np1, phi_n, phi_tilde, Dz_nuT_tilde, dx, dy, dz, params):
     """
     Go from n to n+1/2 for the EPS equation
     """
     eps_n     = phi_n['eps']
-    phi_tilde = getTildeVars(phi_np1, phi_n)
     u_tilde, v_tilde, w_tilde = phi_tilde['u'], phi_tilde['v'], phi_tilde['w']
     nuT_tilde = phi_tilde['nuT']
 
@@ -340,14 +335,13 @@ def RHS_eps_nhalf(phi_np1, phi_n, Dz_nuT_tilde, dx, dy, dz, params):
         RHS[i,j] = u_tilde[i,j]*eps_n[i,j]/(0.5*dx) - w_total[i,j]/dz*D1zback(eps_n, i, j) + nu_total[i,j]*D2zback(eps_n, i, j)/(dz*dz)
     return RHS
 
-def RHS_eps_np1(phi_np1, eps_nhalf, phi_n, Dy_nuT_tilde, dx, dy, dz, params):
+def RHS_eps_np1(eps_nhalf, phi_np1, phi_n, phi_tilde, Dy_nuT_tilde, dx, dy, dz, params):
     """
     Go from n+1/2 to n+1 for the EPS equation
     """
     u_np1, u_n = phi_np1['u'], phi_n['u']
     v_np1, v_n = phi_np1['v'], phi_n['v']
     w_np1, w_n = phi_np1['w'], phi_n['w']
-    phi_tilde = getTildeVars(phi_np1, phi_n)
     u_tilde, v_tilde, w_tilde = phi_tilde['u'], phi_tilde['v'], phi_tilde['w']
     nuT_tilde = phi_tilde['nuT']
 
@@ -414,7 +408,7 @@ def advanceEPS(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc
     # First sweep: n -> n+1/2
     # -----------------------
     eps_nhalf   = np.zeros((Ny, Nz))
-    RHS_nhalf = RHS_eps_nhalf(phi_np1old, phi_n, Dz_nuT, dx, dy, dz, params) 
+    RHS_nhalf = RHS_eps_nhalf(phi_np1old, phi_n, phi_tilde, Dz_nuT, dx, dy, dz, params) 
     for j in range(Nz):
         LHS_nhalf = np.zeros((Ny,3))
         # == Set up the LHS matrices ==
@@ -433,7 +427,7 @@ def advanceEPS(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc
     # Second sweep: n+1/2 -> n+1
     # -----------------------
     eps_np1   = np.zeros((Ny, Nz))
-    RHS_np1 = RHS_eps_np1(phi_np1old, eps_nhalf, phi_n, Dy_nuT, dx, dy, dz, params)
+    RHS_np1 = RHS_eps_np1(eps_nhalf, phi_np1old, phi_n, phi_tilde, Dy_nuT, dx, dy, dz, params)
     # == Set up the LHS matrices ==
     for i in range(Ny):
         LHS_np1 = np.zeros((Nz,3))
