@@ -8,11 +8,10 @@ from SANDwake3D_base import *
 from functools import partial
 
 
-def RHS_f_nhalf(phi_np1, phi_n, phi_tilde, Dz_nuT_tilde, dx, dy, dz, params, field):
+def RHS_f_nhalf(f_n, phi_np1, phi_n, phi_tilde, Dz_nuT_tilde, dx, dy, dz, params):
     """
     Go from n to n+1/2
     """
-    vel_n = phi_n[field]
     u_tilde, w_tilde = phi_tilde['u'], phi_tilde['w']
     nu_total = params['nu'] + phi_tilde['nuT']
     w_total  = w_tilde - Dz_nuT_tilde
@@ -22,23 +21,23 @@ def RHS_f_nhalf(phi_np1, phi_n, phi_tilde, Dz_nuT_tilde, dx, dy, dz, params, fie
     inv_dz2 = 1.0 / (dz * dz)
     inv_half_dx = 2.0 * inv_dx
 
-    RHS = np.empty_like(vel_n)
+    RHS = np.empty_like(f_n)
     RHS[:, 0] = (
-        u_tilde[:, 0] * vel_n[:, 0] * inv_half_dx
-        - w_total[:, 0] * inv_dz * (vel_n[:, 1] - vel_n[:, 0])
-        + nu_total[:, 0] * inv_dz2 * (vel_n[:, 0] - 2.0 * vel_n[:, 1] + vel_n[:, 2])
+        u_tilde[:, 0] * f_n[:, 0] * inv_half_dx
+        - w_total[:, 0] * inv_dz * (f_n[:, 1] - f_n[:, 0])
+        + nu_total[:, 0] * inv_dz2 * (f_n[:, 0] - 2.0 * f_n[:, 1] + f_n[:, 2])
     )
 
     RHS[:, 1:-1] = (
-        u_tilde[:, 1:-1] * vel_n[:, 1:-1] * inv_half_dx
-        - w_total[:, 1:-1] * inv_dz * 0.5 * (vel_n[:, 2:] - vel_n[:, :-2])
-        + nu_total[:, 1:-1] * inv_dz2 * (vel_n[:, 2:] - 2.0 * vel_n[:, 1:-1] + vel_n[:, :-2])
+        u_tilde[:, 1:-1] * f_n[:, 1:-1] * inv_half_dx
+        - w_total[:, 1:-1] * inv_dz * 0.5 * (f_n[:, 2:] - f_n[:, :-2])
+        + nu_total[:, 1:-1] * inv_dz2 * (f_n[:, 2:] - 2.0 * f_n[:, 1:-1] + f_n[:, :-2])
     )
 
     RHS[:, -1] = (
-        u_tilde[:, -1] * vel_n[:, -1] * inv_half_dx
-        - w_total[:, -1] * inv_dz * (vel_n[:, -1] - vel_n[:, -2])
-        + nu_total[:, -1] * inv_dz2 * (vel_n[:, -1] - 2.0 * vel_n[:, -2] + vel_n[:, -3])
+        u_tilde[:, -1] * f_n[:, -1] * inv_half_dx
+        - w_total[:, -1] * inv_dz * (f_n[:, -1] - f_n[:, -2])
+        + nu_total[:, -1] * inv_dz2 * (f_n[:, -1] - 2.0 * f_n[:, -2] + f_n[:, -3])
     )
 
     return RHS
@@ -108,7 +107,7 @@ def advanceF(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc_z
     # First sweep: n -> n+1/2
     # -----------------------
     f_nhalf   = np.zeros((Ny, Nz))
-    RHS_nhalf = RHS_f_nhalf(phi_np1old, phi_n, phi_tilde, Dz_nuT, dx, dy, dz, params, field) + fx_const
+    RHS_nhalf = RHS_f_nhalf(phi_n[field], phi_np1old, phi_n, phi_tilde, Dz_nuT, dx, dy, dz, params) + fx_const
     inv_half_dx = 2.0 / dx
     inv_dy = 1.0 / dy
     inv_dy2 = 1.0 / (dy * dy)
@@ -165,64 +164,6 @@ def advanceF(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc_z
         #print('f_np1 = ',f_np1[i,:])
     return f_np1
 
-def RHS_tke_nhalf(phi_np1, phi_n, phi_tilde, Dz_nuT_tilde, dx, dy, dz, params):
-    """
-    Go from n to n+1/2 for the TKE equation
-    """
-    k_n = phi_n['k']
-    u_tilde, v_tilde, w_tilde = phi_tilde['u'], phi_tilde['v'], phi_tilde['w']
-    nuT_tilde = phi_tilde['nuT']
-
-    nu     = params['nu']
-
-    N  = u_tilde.shape
-    Ny = N[0]
-    Nz = N[1]
-    RHS = np.zeros((Ny, Nz))
-
-    nu_total = nu + nuT_tilde
-    w_total  = w_tilde - Dz_nuT_tilde
-
-    # These loops can be optimized
-    for i in range(Ny):
-        j=0
-        RHS[i,j] = u_tilde[i,j]*k_n[i,j]/(0.5*dx) - w_total[i,j]/dz*D1zfor(k_n, i, j) + nu_total[i,j]*D2zfor(k_n, i, j)/(dz*dz)  
-        for j in range(1,Nz-1):
-            RHS[i,j] = u_tilde[i,j]*k_n[i,j]/(0.5*dx) - w_total[i,j]/dz*D1z(k_n, i, j) + nu_total[i,j]*D2z(k_n, i, j)/(dz*dz)
-        j=Nz-1
-        RHS[i,j] = u_tilde[i,j]*k_n[i,j]/(0.5*dx) - w_total[i,j]/dz*D1zback(k_n, i, j) + nu_total[i,j]*D2zback(k_n, i, j)/(dz*dz)
-    return RHS
-
-def RHS_tke_np1(tke_nhalf, phi_np1, phi_n, phi_tilde, Dy_nuT_tilde, dx, dy, dz, params):
-    """
-    Go from n+1/2 to n+1 for the TKE equation
-    """
-    u_np1, u_n = phi_np1['u'], phi_n['u']
-    v_np1, v_n = phi_np1['v'], phi_n['v']
-    w_np1, w_n = phi_np1['w'], phi_n['w']
-    u_tilde, v_tilde, w_tilde = phi_tilde['u'], phi_tilde['v'], phi_tilde['w']
-    nuT_tilde = phi_tilde['nuT']
-
-    nu = params['nu']
-
-    N  = u_n.shape
-    Ny = N[0]
-    Nz = N[1]
-    RHS = np.zeros((Ny, Nz))
-    
-    nu_total = nu + nuT_tilde
-    v_total  = v_tilde - Dy_nuT_tilde
-
-    # These loops can be optimized
-    for j in range(Nz):
-        i=0
-        RHS[i,j] = u_tilde[i,j]*tke_nhalf[i,j]/(0.5*dx) - v_total[i,j]/dy*D1yfor(tke_nhalf, i, j) + nu_total[i,j]*D2yfor(tke_nhalf, i, j)/(dy*dy)
-        for i in range(1,Ny-1):
-            RHS[i,j] = u_tilde[i,j]*tke_nhalf[i,j]/(0.5*dx) - v_total[i,j]/dy*D1y(tke_nhalf, i, j) + nu_total[i,j]*D2y(tke_nhalf, i, j)/(dy*dy)
-        i=Ny-1
-        RHS[i,j] = u_tilde[i,j]*tke_nhalf[i,j]/(0.5*dx) - v_total[i,j]/dy*D1yback(tke_nhalf, i, j) + nu_total[i,j]*D2yback(tke_nhalf, i, j)/(dy*dy) 
-    return RHS
-
 def advanceTKE(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc_zhi):
     """
     Advance the TKE equation one full step
@@ -263,7 +204,7 @@ def advanceTKE(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc
     # First sweep: n -> n+1/2
     # -----------------------
     tke_nhalf   = np.zeros((Ny, Nz))
-    RHS_nhalf = RHS_tke_nhalf(phi_np1old, phi_n, phi_tilde, Dz_nuT, dx, dy, dz, params) + RHS_extra_forcing
+    RHS_nhalf = RHS_f_nhalf(phi_n["k"], phi_np1old, phi_n, phi_tilde, Dz_nuT, dx, dy, dz, params) + RHS_extra_forcing
     for j in range(Nz):
         LHS_nhalf = np.zeros((Ny,3))
         # == Set up the LHS matrices ==
@@ -282,7 +223,7 @@ def advanceTKE(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc
     # Second sweep: n+1/2 -> n+1
     # -----------------------
     tke_np1   = np.zeros((Ny, Nz))
-    RHS_np1 = RHS_tke_np1(tke_nhalf, phi_np1old, phi_n, phi_tilde, Dy_nuT, dx, dy, dz, params) + RHS_extra_forcing
+    RHS_np1 = RHS_f_np1(tke_nhalf, phi_np1old, phi_n, phi_tilde, Dy_nuT, dx, dy, dz, params) + RHS_extra_forcing
     # == Set up the LHS matrices ==
     for i in range(Ny):
         LHS_np1 = np.zeros((Nz,3))
@@ -304,64 +245,6 @@ def advanceTKE(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc
         tke_np1[i,:] = solvetridiag(LHS_np1, RHS_np1[i,:], verbose=False)
 
     return tke_np1
-
-def RHS_eps_nhalf(phi_np1, phi_n, phi_tilde, Dz_nuT_tilde, dx, dy, dz, params):
-    """
-    Go from n to n+1/2 for the EPS equation
-    """
-    eps_n     = phi_n['eps']
-    u_tilde, v_tilde, w_tilde = phi_tilde['u'], phi_tilde['v'], phi_tilde['w']
-    nuT_tilde = phi_tilde['nuT']
-
-    nu     = params['nu']
-
-    N  = u_tilde.shape
-    Ny = N[0]
-    Nz = N[1]
-    RHS = np.zeros((Ny, Nz))
-
-    nu_total = nu + nuT_tilde
-    w_total  = w_tilde - Dz_nuT_tilde
-
-    # These loops can be optimized
-    for i in range(Ny):
-        j=0
-        RHS[i,j] = u_tilde[i,j]*eps_n[i,j]/(0.5*dx) - w_total[i,j]/dz*D1zfor(eps_n, i, j) + nu_total[i,j]*D2zfor(eps_n, i, j)/(dz*dz)  
-        for j in range(1,Nz-1):
-            RHS[i,j] = u_tilde[i,j]*eps_n[i,j]/(0.5*dx) - w_total[i,j]/dz*D1z(eps_n, i, j) + nu_total[i,j]*D2z(eps_n, i, j)/(dz*dz)
-        j=Nz-1
-        RHS[i,j] = u_tilde[i,j]*eps_n[i,j]/(0.5*dx) - w_total[i,j]/dz*D1zback(eps_n, i, j) + nu_total[i,j]*D2zback(eps_n, i, j)/(dz*dz)
-    return RHS
-
-def RHS_eps_np1(eps_nhalf, phi_np1, phi_n, phi_tilde, Dy_nuT_tilde, dx, dy, dz, params):
-    """
-    Go from n+1/2 to n+1 for the EPS equation
-    """
-    u_np1, u_n = phi_np1['u'], phi_n['u']
-    v_np1, v_n = phi_np1['v'], phi_n['v']
-    w_np1, w_n = phi_np1['w'], phi_n['w']
-    u_tilde, v_tilde, w_tilde = phi_tilde['u'], phi_tilde['v'], phi_tilde['w']
-    nuT_tilde = phi_tilde['nuT']
-
-    nu = params['nu']
-
-    N  = u_n.shape
-    Ny = N[0]
-    Nz = N[1]
-    RHS = np.zeros((Ny, Nz))
-    
-    nu_total = nu + nuT_tilde
-    v_total  = v_tilde - Dy_nuT_tilde
-
-    # These loops can be optimized
-    for j in range(Nz):
-        i=0
-        RHS[i,j] = u_tilde[i,j]*eps_nhalf[i,j]/(0.5*dx) - v_total[i,j]/dy*D1yfor(eps_nhalf, i, j) + nu_total[i,j]*D2yfor(eps_nhalf, i, j)/(dy*dy)
-        for i in range(1,Ny-1):
-            RHS[i,j] = u_tilde[i,j]*eps_nhalf[i,j]/(0.5*dx) - v_total[i,j]/dy*D1y(eps_nhalf, i, j) + nu_total[i,j]*D2y(eps_nhalf, i, j)/(dy*dy)
-        i=Ny-1
-        RHS[i,j] = u_tilde[i,j]*eps_nhalf[i,j]/(0.5*dx) - v_total[i,j]/dy*D1yback(eps_nhalf, i, j) + nu_total[i,j]*D2yback(eps_nhalf, i, j)/(dy*dy) 
-    return RHS
 
 def advanceEPS(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc_zhi):
     """
@@ -406,7 +289,7 @@ def advanceEPS(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc
     # First sweep: n -> n+1/2
     # -----------------------
     eps_nhalf   = np.zeros((Ny, Nz))
-    RHS_nhalf = RHS_eps_nhalf(phi_np1old, phi_n, phi_tilde, Dz_nuT, dx, dy, dz, params) 
+    RHS_nhalf = RHS_f_nhalf(phi_n["eps"], phi_np1old, phi_n, phi_tilde, Dz_nuT, dx, dy, dz, params) 
     for j in range(Nz):
         LHS_nhalf = np.zeros((Ny,3))
         # == Set up the LHS matrices ==
@@ -425,7 +308,7 @@ def advanceEPS(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc
     # Second sweep: n+1/2 -> n+1
     # -----------------------
     eps_np1   = np.zeros((Ny, Nz))
-    RHS_np1 = RHS_eps_np1(eps_nhalf, phi_np1old, phi_n, phi_tilde, Dy_nuT, dx, dy, dz, params)
+    RHS_np1 = RHS_f_np1(eps_nhalf, phi_np1old, phi_n, phi_tilde, Dy_nuT, dx, dy, dz, params)
     # == Set up the LHS matrices ==
     for i in range(Ny):
         LHS_np1 = np.zeros((Nz,3))
