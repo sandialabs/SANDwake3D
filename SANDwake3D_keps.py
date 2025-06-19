@@ -646,7 +646,7 @@ def advanceEPS(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc
     # First sweep: n -> n+1/2
     # -----------------------
     eps_nhalf   = np.zeros((Ny, Nz))
-    RHS_nhalf = RHS_eps_nhalf(phi_np1old, phi_n, Dz_nuT, dx, dy, dz, params) 
+    RHS_nhalf = RHS_eps_nhalf(phi_np1old, phi_n, Dz_nuT, dx, dy, dz, params) + RHS_extra_forcing
     for j in range(Nz):
         LHS_nhalf = np.zeros((Ny,3))
         # == Set up the LHS matrices ==
@@ -665,7 +665,7 @@ def advanceEPS(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc
     # Second sweep: n+1/2 -> n+1
     # -----------------------
     eps_np1   = np.zeros((Ny, Nz))
-    RHS_np1 = RHS_eps_np1(phi_np1old, eps_nhalf, phi_n, Dy_nuT, dx, dy, dz, params)
+    RHS_np1 = RHS_eps_np1(phi_np1old, eps_nhalf, phi_n, Dy_nuT, dx, dy, dz, params) + RHS_extra_forcing
     # == Set up the LHS matrices ==
     for i in range(Ny):
         LHS_np1 = np.zeros((Nz,3))
