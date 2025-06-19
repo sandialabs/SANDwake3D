@@ -74,11 +74,39 @@ def RHS_f_np1(f_nhalf, phi_np1, phi_n, phi_tilde, Dy_nuT_tilde, dx, dy, dz, para
     )
     return RHS
 
+def scale_nuT(phi, params, field):
+    sigma = f"""sigma{field}"""
+    if sigma in params:
+        phi['nuT'] /= params[sigma]
+
+def rhs_f_extra_forcing(field, phi, params, dx, dy, dz):
+
+    if field == "k":
+        sigmak   = params['sigmak']
+        fk_const = params['fk_const'] if 'fk_const' in params else 0.0
+        Dy_U, Dz_U = np.gradient(phi['u'], dy, dz, edge_order=1)
+        return sigmak*phi['nuT']*(Dy_U*Dy_U + Dz_U*Dz_U) - phi['eps'] + fk_const
+    elif field == "eps":
+        nu       = params['nu']
+        sigmaeps = params['sigmaeps']
+        C1eps    = params['C1eps']
+        C2eps    = params['C2eps']
+        C3eps    = params['C3eps']
+        feps_const = params['feps_const'] if 'feps_const' in params else 0.0
+        Tscale = TimeScale(phi['k'], phi['eps'], nu)
+        Dy_U, Dz_U = np.gradient(phi['u'], dy, dz, edge_order=1)
+        return 0.0 # C1eps/Tscale*(sigmaeps*phi['nuT']*(Dy_U*Dy_U) + phi['nuT']*(Dz_U*Dz_U)) - C2eps*phi["eps"]/Tscale + feps_const
+    elif field == "u" or field == "w":
+        fx_const = params['fx_const'] if 'fx_const' in params else 0.0
+        return fx_const
+    return 0
+        
 def advanceF(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc_zhi, field):
     """
     Advance the field one full step
     """
     phi_tilde = getTildeVars(phi_np1old, phi_n)
+    scale_nuT(phi_tilde, params, field)
     u_tilde, v_tilde, w_tilde = phi_tilde['u'], phi_tilde['v'], phi_tilde['w']
     nuT_tilde = phi_tilde['nuT']
     
@@ -88,8 +116,7 @@ def advanceF(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc_z
 
     # Load parameters
     nu       = params['nu']
-    fx_const = params['fx_const'] if 'fx_const' in params else 0.0
-    
+        
     # --- differentiation stencils ---
     #                  j-1  j  j+1
     Irow   = np.array([0,   1,  0])
@@ -104,10 +131,12 @@ def advanceF(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc_z
     v_total  = v_tilde - Dy_nuT
     w_total  = w_tilde - Dz_nuT
 
+    RHS_extra_forcing = rhs_f_extra_forcing(field, phi_tilde, params, dx, dy, dz)
+    
     # First sweep: n -> n+1/2
     # -----------------------
     f_nhalf   = np.zeros((Ny, Nz))
-    RHS_nhalf = RHS_f_nhalf(phi_n[field], phi_np1old, phi_n, phi_tilde, Dz_nuT, dx, dy, dz, params) + fx_const
+    RHS_nhalf = RHS_f_nhalf(phi_n[field], phi_np1old, phi_n, phi_tilde, Dz_nuT, dx, dy, dz, params) + RHS_extra_forcing
     inv_half_dx = 2.0 / dx
     inv_dy = 1.0 / dy
     inv_dy2 = 1.0 / (dy * dy)
@@ -136,7 +165,7 @@ def advanceF(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc_z
     # Second sweep: n+1/2 -> n+1
     # -----------------------
     f_np1   = np.zeros((Ny, Nz))
-    RHS_np1 = RHS_f_np1(f_nhalf, phi_np1old, phi_n, phi_tilde, Dy_nuT, dx, dy, dz, params) + fx_const
+    RHS_np1 = RHS_f_np1(f_nhalf, phi_np1old, phi_n, phi_tilde, Dy_nuT, dx, dy, dz, params) + RHS_extra_forcing
     # == Set up the LHS matrices ==
     row_lo_base, dentry_lo_base = applyBC(bc_zlo, 'lower', dz)
     row_hi_base, dentry_hi_base = applyBC(bc_zhi, 'upper', dz)
@@ -164,173 +193,6 @@ def advanceF(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc_z
         #print('f_np1 = ',f_np1[i,:])
     return f_np1
 
-def advanceTKE(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc_zhi):
-    """
-    Advance the TKE equation one full step
-    """
-    phi_tilde = getTildeVars(phi_np1old, phi_n)
-    phi_tilde['nuT'] /= params['sigmak']
-    u_tilde, v_tilde, w_tilde = phi_tilde['u'], phi_tilde['v'], phi_tilde['w']
-    nuT_tilde = phi_tilde['nuT']
-    k_tilde = phi_tilde['k']
-    eps_tilde = phi_tilde['eps']
-
-    N  = u_tilde.shape
-    Ny = N[0]
-    Nz = N[1]
-
-    # Load parameters
-    nu       = params['nu']
-    sigmak   = params['sigmak']
-    fk_const = params['fk_const'] if 'fk_const' in params else 0.0
-    
-    # --- differentiation stencils ---
-    #                  j-1  j  j+1
-    Irow   = np.array([0,   1,  0])
-    Dcen   = np.array([-1,  0,  1])*0.5
-    D2cen  = np.array([1,  -2,  1])
-    # -------------------------------
-
-    # Compute some quantities
-    Dy_nuT, Dz_nuT = np.gradient(nuT_tilde, dy, dz, edge_order=1)
-    Dy_U, Dz_U = np.gradient(u_tilde, dy, dz, edge_order=1)
-
-    nu_total = nu + nuT_tilde
-    v_total  = v_tilde - Dy_nuT
-    w_total  = w_tilde - Dz_nuT
-
-    RHS_extra_forcing = sigmak*nuT_tilde*(Dy_U*Dy_U + Dz_U*Dz_U) - eps_tilde + fk_const
-    
-    # First sweep: n -> n+1/2
-    # -----------------------
-    tke_nhalf   = np.zeros((Ny, Nz))
-    RHS_nhalf = RHS_f_nhalf(phi_n["k"], phi_np1old, phi_n, phi_tilde, Dz_nuT, dx, dy, dz, params) + RHS_extra_forcing
-    for j in range(Nz):
-        LHS_nhalf = np.zeros((Ny,3))
-        # == Set up the LHS matrices ==
-        for i in range(1,Ny-1):
-            LHS_nhalf[i,:] = u_tilde[i,j]/(0.5*dx)*Irow + v_total[i,j]*Dcen/dy - nu_total[i,j]*D2cen/(dy*dy)
-        # Apply BC's
-        row_lo, dentry_lo = applyBC(bc_ylo, 'lower', dy)
-        row_hi, dentry_hi = applyBC(bc_yhi, 'upper', dy)
-        LHS_nhalf[0,:]  = row_lo
-        LHS_nhalf[-1,:] = row_hi
-        RHS_nhalf[0,:]  = dentry_lo
-        RHS_nhalf[-1,:] = dentry_hi
-        # Solve the triadiagonal system
-        tke_nhalf[:,j] = solvetridiag(LHS_nhalf, RHS_nhalf[:,j])
-
-    # Second sweep: n+1/2 -> n+1
-    # -----------------------
-    tke_np1   = np.zeros((Ny, Nz))
-    RHS_np1 = RHS_f_np1(tke_nhalf, phi_np1old, phi_n, phi_tilde, Dy_nuT, dx, dy, dz, params) + RHS_extra_forcing
-    # == Set up the LHS matrices ==
-    for i in range(Ny):
-        LHS_np1 = np.zeros((Nz,3))
-        for j in range(1,Nz-1):
-            LHS_np1[j,:] = u_tilde[i,j]/(0.5*dx)*Irow + w_total[i,j]*Dcen/dz - nu_total[i,j]*D2cen/(dz*dz) 
-        # Apply BC's
-        row_lo, dentry_lo = applyBC(bc_zlo, 'lower', dz)
-        row_hi, dentry_hi = applyBC(bc_zhi, 'upper', dz)
-        if i==0:
-            row_lo, dentry_lo = applyBC({'type':'dirichlet', 'value':k_tilde[i,0]}, 'lower', dz)
-        if i==Ny-1:
-            row_hi, dentry_hi = applyBC({'type':'dirichlet', 'value':k_tilde[i,-1]}, 'lower', dz)            
-        LHS_np1[0,:]  = row_lo
-        LHS_np1[-1,:] = row_hi
-        RHS_np1[:,0]  = dentry_lo
-        RHS_np1[:,-1] = dentry_hi
-        #print(f'i = {i}\nRHS_np1 = ',RHS_np1[i,:], '\nLHS = ', LHS_np1)                
-        # Solve the triadiagonal system
-        tke_np1[i,:] = solvetridiag(LHS_np1, RHS_np1[i,:], verbose=False)
-
-    return tke_np1
-
-def advanceEPS(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc_zhi):
-    """
-    Advance the dissipation equation one full step
-    """
-    phi_tilde = getTildeVars(phi_np1old, phi_n)
-    phi_tilde['nuT'] /= params['sigmaeps']
-    u_tilde, v_tilde, w_tilde = phi_tilde['u'], phi_tilde['v'], phi_tilde['w']
-    nuT_tilde = phi_tilde['nuT']
-    eps_tilde = phi_tilde['eps']
-
-    N  = u_tilde.shape
-    Ny = N[0]
-    Nz = N[1]
-    
-    # Load parameters
-    nu       = params['nu']
-    sigmaeps = params['sigmaeps']
-    C1eps    = params['C1eps']
-    C2eps    = params['C2eps']
-    C3eps    = params['C3eps']
-    feps_const = params['feps_const'] if 'feps_const' in params else 0.0
-    
-    # --- differentiation stencils ---
-    #                  j-1  j  j+1
-    Irow   = np.array([0,   1,  0])
-    Dcen   = np.array([-1,  0,  1])*0.5
-    D2cen  = np.array([1,  -2,  1])
-    # -------------------------------
-
-    # Compute some quantities
-    Dy_nuT, Dz_nuT = np.gradient(nuT_tilde, dy, dz, edge_order=1)
-    Dy_U, Dz_U = np.gradient(u_tilde, dy, dz, edge_order=1)
-
-    nu_total = nu + nuT_tilde
-    v_total  = v_tilde - Dy_nuT
-    w_total  = w_tilde - Dz_nuT
-
-    Tscale = TimeScale(phi_tilde['k'], phi_tilde['eps'], nu)
-    RHS_extra_forcing = C1eps/Tscale*(sigmaeps*nuT_tilde*(Dy_U*Dy_U) + nuT_tilde*(Dz_U*Dz_U)) - C2eps*eps_tilde/Tscale + feps_const
-    
-    # First sweep: n -> n+1/2
-    # -----------------------
-    eps_nhalf   = np.zeros((Ny, Nz))
-    RHS_nhalf = RHS_f_nhalf(phi_n["eps"], phi_np1old, phi_n, phi_tilde, Dz_nuT, dx, dy, dz, params) 
-    for j in range(Nz):
-        LHS_nhalf = np.zeros((Ny,3))
-        # == Set up the LHS matrices ==
-        for i in range(1,Ny-1):
-            LHS_nhalf[i,:] = u_tilde[i,j]/(0.5*dx)*Irow + v_total[i,j]*Dcen/dy - nu_total[i,j]*D2cen/(dy*dy)
-        # Apply BC's
-        row_lo, dentry_lo = applyBC(bc_ylo, 'lower', dy)
-        row_hi, dentry_hi = applyBC(bc_yhi, 'upper', dy)
-        LHS_nhalf[0,:]  = row_lo
-        LHS_nhalf[-1,:] = row_hi
-        RHS_nhalf[0,:]  = dentry_lo
-        RHS_nhalf[-1,:] = dentry_hi
-        # Solve the triadiagonal system
-        eps_nhalf[:,j] = solvetridiag(LHS_nhalf, RHS_nhalf[:,j])
-
-    # Second sweep: n+1/2 -> n+1
-    # -----------------------
-    eps_np1   = np.zeros((Ny, Nz))
-    RHS_np1 = RHS_f_np1(eps_nhalf, phi_np1old, phi_n, phi_tilde, Dy_nuT, dx, dy, dz, params)
-    # == Set up the LHS matrices ==
-    for i in range(Ny):
-        LHS_np1 = np.zeros((Nz,3))
-        for j in range(1,Nz-1):
-            LHS_np1[j,:] = u_tilde[i,j]/(0.5*dx)*Irow + w_total[i,j]*Dcen/dz - nu_total[i,j]*D2cen/(dz*dz) 
-        # Apply BC's
-        row_lo, dentry_lo = applyBC(bc_zlo, 'lower', dz)
-        row_hi, dentry_hi = applyBC(bc_zhi, 'upper', dz)
-        if i==0:
-            row_lo, dentry_lo = applyBC({'type':'dirichlet', 'value':eps_tilde[i,0]}, 'lower', dz)
-        if i==Ny-1:
-            row_hi, dentry_hi = applyBC({'type':'dirichlet', 'value':eps_tilde[i,-1]}, 'lower', dz)            
-        LHS_np1[0,:]  = row_lo
-        LHS_np1[-1,:] = row_hi
-        RHS_np1[:,0]  = dentry_lo
-        RHS_np1[:,-1] = dentry_hi
-        #print(f'i = {i}\nRHS_np1 = ',RHS_np1[i,:], '\nLHS = ', LHS_np1)                
-        # Solve the triadiagonal system
-        eps_np1[i,:] = solvetridiag(LHS_np1, RHS_np1[i,:], verbose=False)
-
-    return eps_np1 #np.zeros((Ny, Nz))
-
 def advanceMass(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc_zhi):
     """
     Advance the continuity equation one full step
@@ -346,22 +208,6 @@ def advanceMass(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, b
     # == Set up the LHS matrices ==
     row_lo, dentry_lo = applyBC(bc_ylo, 'lower', dy)
     v_np1 = np.cumsum(RHS, axis=0) + dentry_lo
-    
-    # # == Set up the LHS matrices ==
-    # for j in range(Nz):
-    #     LHS = np.zeros((Ny,3))
-    #     # == Set up the LHS matrices ==
-    #     for i in range(1,Ny-1):
-    #         LHS[i,:] = Dcen
-    #     # Apply BC's
-    #     row_lo, dentry_lo = applyBC(bc_ylo, 'lower', dy)
-    #     row_hi, dentry_hi = applyBC(bc_yhi, 'upper', dy)
-    #     LHS[0,:]  = row_lo
-    #     LHS[-1,:] = row_hi
-    #     RHS[0,:]  = dentry_lo
-    #     RHS[-1,:] = dentry_hi
-    #     # Solve the triadiagonal system
-    #     v_np1[:,j] = solvetridiag(LHS, RHS[:,j])
 
     return v_np1
 
@@ -370,7 +216,7 @@ def TimeScale(k, eps, nu):
 
 def getNuT(phi, Cmu, nu):
     # timescale
-    #Tscale = np.fmax(phi['k']/phi['eps'], 6.0*np.sqrt(nu/phi['eps'][:,:]))
+    # Tscale = np.fmax(phi['k']/phi['eps'], 6.0*np.sqrt(nu/phi['eps'][:,:]))
     Tscale = TimeScale(phi['k'], phi['eps'], nu)
     return Cmu*phi['k']*Tscale
 
@@ -498,8 +344,8 @@ def set_k_init(rvec,dr,u,params,k_factor=0.1):
 keps_eqns        = OrderedDict()
 keps_eqns['u']   = partial(advanceF, field="u")
 keps_eqns['w']   = partial(advanceF, field="w")
-keps_eqns['k']   = advanceTKE
-keps_eqns['eps'] = advanceEPS
+keps_eqns['k']   = partial(advanceF, field="k")
+keps_eqns['eps'] = partial(advanceF, field="eps")
 keps_eqns['v']   = advanceMass
 
 # Use the same marchSystemBase in SANDWake3D_base to advance the equations
