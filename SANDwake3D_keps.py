@@ -228,8 +228,8 @@ def advanceTKE(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc
     Advance the TKE equation one full step
     """
     phi_tilde = getTildeVars(phi_np1old, phi_n)
-    u_tilde, v_tilde, w_tilde = phi_tilde['u'], phi_tilde['v'], phi_tilde['w']
     phi_tilde['nuT'] /= params['sigmak']
+    u_tilde, v_tilde, w_tilde = phi_tilde['u'], phi_tilde['v'], phi_tilde['w']
     nuT_tilde = phi_tilde['nuT']
     k_tilde = phi_tilde['k']
     eps_tilde = phi_tilde['eps']
@@ -314,15 +314,14 @@ def RHS_eps_nhalf(phi_np1, phi_n, phi_tilde, Dz_nuT_tilde, dx, dy, dz, params):
     nuT_tilde = phi_tilde['nuT']
 
     nu     = params['nu']
-    sigmaeps = params['sigmaeps']
 
     N  = u_tilde.shape
     Ny = N[0]
     Nz = N[1]
     RHS = np.zeros((Ny, Nz))
 
-    nu_total = nu + nuT_tilde/sigmaeps
-    w_total  = w_tilde - Dz_nuT_tilde/sigmaeps
+    nu_total = nu + nuT_tilde
+    w_total  = w_tilde - Dz_nuT_tilde
 
     # These loops can be optimized
     for i in range(Ny):
@@ -345,15 +344,14 @@ def RHS_eps_np1(eps_nhalf, phi_np1, phi_n, phi_tilde, Dy_nuT_tilde, dx, dy, dz, 
     nuT_tilde = phi_tilde['nuT']
 
     nu = params['nu']
-    sigmaeps = params['sigmaeps']
 
     N  = u_n.shape
     Ny = N[0]
     Nz = N[1]
     RHS = np.zeros((Ny, Nz))
     
-    nu_total = nu + nuT_tilde/sigmaeps
-    v_total  = v_tilde - Dy_nuT_tilde/sigmaeps
+    nu_total = nu + nuT_tilde
+    v_total  = v_tilde - Dy_nuT_tilde
 
     # These loops can be optimized
     for j in range(Nz):
@@ -370,6 +368,7 @@ def advanceEPS(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc
     Advance the dissipation equation one full step
     """
     phi_tilde = getTildeVars(phi_np1old, phi_n)
+    phi_tilde['nuT'] /= params['sigmaeps']
     u_tilde, v_tilde, w_tilde = phi_tilde['u'], phi_tilde['v'], phi_tilde['w']
     nuT_tilde = phi_tilde['nuT']
     eps_tilde = phi_tilde['eps']
@@ -397,12 +396,12 @@ def advanceEPS(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc
     Dy_nuT, Dz_nuT = np.gradient(nuT_tilde, dy, dz, edge_order=1)
     Dy_U, Dz_U = np.gradient(u_tilde, dy, dz, edge_order=1)
 
-    nu_total = nu + nuT_tilde/sigmaeps
-    v_total  = v_tilde - Dy_nuT/sigmaeps
-    w_total  = w_tilde - Dz_nuT/sigmaeps
+    nu_total = nu + nuT_tilde
+    v_total  = v_tilde - Dy_nuT
+    w_total  = w_tilde - Dz_nuT
 
     Tscale = TimeScale(phi_tilde['k'], phi_tilde['eps'], nu)
-    RHS_extra_forcing = C1eps/Tscale*(nuT_tilde*(Dy_U*Dy_U) + nuT_tilde*(Dz_U*Dz_U)) - C2eps*eps_tilde/Tscale + feps_const
+    RHS_extra_forcing = C1eps/Tscale*(sigmaeps*nuT_tilde*(Dy_U*Dy_U) + nuT_tilde*(Dz_U*Dz_U)) - C2eps*eps_tilde/Tscale + feps_const
     
     # First sweep: n -> n+1/2
     # -----------------------
