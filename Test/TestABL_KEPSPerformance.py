@@ -151,7 +151,7 @@ def main():
         "C1eps": 1.76,
         "C2eps": 1.92,
         "C3eps": 0.033,
-        "sigmak": 1.0,
+        "sigmak": 0.9,
         "sigmaeps": 1.3,
     }
 
