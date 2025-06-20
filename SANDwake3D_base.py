@@ -95,9 +95,8 @@ def getTildeVars(phi_np1, phi_n):
     """
     Get the averaged quantities for the convective term
     """
-    varlist = [v for v, g in phi_n.items()]
     phiTilde = {}
-    for v in varlist:
+    for v in phi_n:
         phiTilde[v] = 0.5*(phi_np1[v] + phi_n[v])
     return phiTilde
 
