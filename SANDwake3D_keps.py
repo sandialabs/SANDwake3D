@@ -81,15 +81,23 @@ def rhs_f_np1(f_nhalf, phi_tilde, dy_nut_tilde, dx, dy, params):
     return rhs
 
 
-def rhs_f_extra_forcing(field, phi, params, dy, dz):
+def rhs_f_extra_forcing(field, phi, aux_vars, params, dy, dz):
     """
     Compute the RHS extra forcing if necessary
     """
     if field == "k":
         sigmak = params["sigmak"]
         fk_const = params["fk_const"] if "fk_const" in params else 0.0
-        dy_u, dz_u = np.gradient(phi["u"], dy, dz, edge_order=1)
-        return sigmak * phi["nut"] * (dy_u * dy_u + dz_u * dz_u) - phi["eps"] + fk_const
+        return (
+            sigmak
+            * phi["nut"]
+            * (
+                aux_vars["dy_u"] * aux_vars["dy_u"]
+                + aux_vars["dz_u"] * aux_vars["dz_u"]
+            )
+            - phi["eps"]
+            + fk_const
+        )
     if field == "eps":
         nu = params["nu"]
         sigmaeps = params["sigmaeps"]
@@ -98,13 +106,12 @@ def rhs_f_extra_forcing(field, phi, params, dy, dz):
         C3eps = params["C3eps"]
         feps_const = params["feps_const"] if "feps_const" in params else 0.0
         Tscale = time_scale(phi["k"], phi["eps"], nu)
-        dy_u, dz_u = np.gradient(phi["u"], dy, dz, edge_order=1)
         return (
             C1eps
             / Tscale
             * (
-                sigmaeps * phi["nut"] * (dy_u * dy_u)
-                + sigmaeps * phi["nut"] * (dz_u * dz_u)
+                sigmaeps * phi["nut"] * (aux_vars["dy_u"] * aux_vars["dy_u"])
+                + sigmaeps * phi["nut"] * (aux_vars["dz_u"] * aux_vars["dz_u"])
             )
             - C2eps * phi["eps"] / Tscale
             + feps_const
@@ -137,7 +144,7 @@ def advanceF(field, phi_np1old, phi_n, phi_tilde, aux_vars, dx, dy, dz, params, 
     v_total = v_tilde - aux_vars["dy_nut"]
     w_total = w_tilde - aux_vars["dz_nut"]
 
-    rhs_extra_forcing = rhs_f_extra_forcing(field, phi_tilde, params, dy, dz)
+    rhs_extra_forcing = rhs_f_extra_forcing(field, phi_tilde, aux_vars, params, dy, dz)
 
     # First sweep: n -> n+1/2
     # -----------------------
@@ -276,6 +283,9 @@ def advanceSystemKEPS(
         aux_vars = OrderedDict()
         aux_vars["dy_nut"], aux_vars["dz_nut"] = np.gradient(
             phi_tilde["nut"], dy, dz, edge_order=1
+        )
+        aux_vars["dy_u"], aux_vars["dz_u"] = np.gradient(
+            phi_tilde["u"], dy, dz, edge_order=1
         )
 
         # Loop over all variables
