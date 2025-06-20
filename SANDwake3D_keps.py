@@ -81,15 +81,6 @@ def rhs_f_np1(f_nhalf, phi_tilde, dy_nut_tilde, dx, dy, params):
     return rhs
 
 
-def scale_nut(phi, params, field):
-    """
-    Scale turbulent viscosity if necessary
-    """
-    sigma = f"""sigma{field}"""
-    if sigma in params:
-        phi["nut"] /= params[sigma]
-
-
 def rhs_f_extra_forcing(field, phi, params, dy, dz):
     """
     Compute the RHS extra forcing if necessary
@@ -124,14 +115,10 @@ def rhs_f_extra_forcing(field, phi, params, dy, dz):
     return 0
 
 
-def advanceF(
-    phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc_zhi, field
-):
+def advanceF(field, phi_np1old, phi_n, phi_tilde, aux_vars, dx, dy, dz, params, bcvar):
     """
     Advance the field one full step
     """
-    phi_tilde = sdb.getTildeVars(phi_np1old, phi_n)
-    scale_nut(phi_tilde, params, field)
     u_tilde, v_tilde, w_tilde = phi_tilde["u"], phi_tilde["v"], phi_tilde["w"]
     nut_tilde = phi_tilde["nut"]
     ny, nz = u_tilde.shape
@@ -146,12 +133,9 @@ def advanceF(
     d2cen = np.array([1, -2, 1])
     # -------------------------------
 
-    # Compute some quantities related to nut
-    dy_nut, dz_nut = np.gradient(nut_tilde, dy, dz, edge_order=1)
-
     nu_total = nu + nut_tilde
-    v_total = v_tilde - dy_nut
-    w_total = w_tilde - dz_nut
+    v_total = v_tilde - aux_vars["dy_nut"]
+    w_total = w_tilde - aux_vars["dz_nut"]
 
     rhs_extra_forcing = rhs_f_extra_forcing(field, phi_tilde, params, dy, dz)
 
@@ -159,15 +143,16 @@ def advanceF(
     # -----------------------
     f_nhalf = np.zeros((ny, nz))
     rhs_nhalf = (
-        rhs_f_nhalf(phi_n[field], phi_tilde, dz_nut, dx, dz, params) + rhs_extra_forcing
+        rhs_f_nhalf(phi_n[field], phi_tilde, aux_vars["dz_nut"], dx, dz, params)
+        + rhs_extra_forcing
     )
     inv_half_dx = 2.0 / dx
     inv_dy = 1.0 / dy
     inv_dy2 = 1.0 / (dy * dy)
     inv_dz = 1.0 / dz
     inv_dz2 = 1.0 / (dz * dz)
-    row_lo, dentry_lo = sdb.applyBC(bc_ylo, "lower", dy)
-    row_hi, dentry_hi = sdb.applyBC(bc_yhi, "upper", dy)
+    row_lo, dentry_lo = sdb.applyBC(bcvar["ylo"], "lower", dy)
+    row_hi, dentry_hi = sdb.applyBC(bcvar["yhi"], "upper", dy)
     for j in range(nz):
         lhs_nhalf = np.zeros((ny, 3))
         # == Set up the LHS matrices ==
@@ -189,10 +174,13 @@ def advanceF(
     # Second sweep: n+1/2 -> n+1
     # -----------------------
     f_np1 = np.zeros((ny, nz))
-    rhs_np1 = rhs_f_np1(f_nhalf, phi_tilde, dy_nut, dx, dy, params) + rhs_extra_forcing
+    rhs_np1 = (
+        rhs_f_np1(f_nhalf, phi_tilde, aux_vars["dy_nut"], dx, dy, params)
+        + rhs_extra_forcing
+    )
     # == Set up the LHS matrices ==
-    row_lo_base, dentry_lo_base = sdb.applyBC(bc_zlo, "lower", dz)
-    row_hi_base, dentry_hi_base = sdb.applyBC(bc_zhi, "upper", dz)
+    row_lo_base, dentry_lo_base = sdb.applyBC(bcvar["zlo"], "lower", dz)
+    row_hi_base, dentry_hi_base = sdb.applyBC(bcvar["zhi"], "upper", dz)
     for i in range(ny):
         lhs_np1 = np.zeros((nz, 3))
         lhs_np1[1:-1, :] = (
@@ -219,10 +207,22 @@ def advanceF(
         # Solve the triadiagonal system
         f_np1[i, :] = sdb.solvetridiag(lhs_np1, rhs_np1[i, :], verbose=False)
         # print('f_np1 = ',f_np1[i,:])
+
     return f_np1
 
 
-def advanceMass(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc_zhi):
+def advanceMass(
+    field,
+    phi_np1old,
+    phi_n,
+    phi_tilde,
+    aux_vars,
+    dx,
+    dy,
+    dz,
+    params,
+    bcvar,
+):
     """
     Advance the continuity equation one full step
     """
@@ -234,7 +234,7 @@ def advanceMass(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, b
     rhs = -dy * (u_np1 - u_n) / (dx) - dy * dz_w
 
     # == Set up the LHS matrices ==
-    _, dentry_lo = sdb.applyBC(bc_ylo, "lower", dy)
+    _, dentry_lo = sdb.applyBC(bcvar["ylo"], "lower", dy)
     v_np1 = np.cumsum(rhs, axis=0) + dentry_lo
 
     return v_np1
@@ -270,21 +270,42 @@ def advanceSystemKEPS(
     for k in range(maxiter):
         phi_next = OrderedDict()
         phi_n1["nut"] = get_nut(phi_n1, params["Cmu"], params["nu"])
+        phi_tilde = sdb.getTildeVars(phi_n1, phi_n)
+
+        # Auxiliary variables
+        aux_vars = OrderedDict()
+        aux_vars["dy_nut"], aux_vars["dz_nut"] = np.gradient(
+            phi_tilde["nut"], dy, dz, edge_order=1
+        )
+
         # Loop over all variables
         for v in varlist:
             bcvar = allbcs[v]
+
+            sigma = f"""sigma{v}"""
+            if sigma in params:
+                phi_tilde["nut"] /= params[sigma]
+                aux_vars["dy_nut"] /= params[sigma]
+                aux_vars["dz_nut"] /= params[sigma]
+
             phi_next[v] = eqnsys[v](
+                v,
                 phi_n1,
                 phi_n,
+                phi_tilde,
+                aux_vars,
                 dx,
                 dy,
                 dz,
                 params,
-                bcvar["ylo"],
-                bcvar["yhi"],
-                bcvar["zlo"],
-                bcvar["zhi"],
+                bcvar,
             )
+
+            if sigma in params:
+                phi_tilde["nut"] *= params[sigma]
+                aux_vars["dy_nut"] *= params[sigma]
+                aux_vars["dz_nut"] *= params[sigma]
+
         # Test for convergence
         converged, convergedat = sdb.convergetest(phi_next, phi_n1, tol)
         phi_n1 = copy.deepcopy(phi_next)
@@ -402,10 +423,10 @@ def set_k_init(rvec, dr, u, params, k_factor=0.1):
 ########################################################
 # Define the laminar equation system
 keps_eqns = OrderedDict()
-keps_eqns["u"] = partial(advanceF, field="u")
-keps_eqns["w"] = partial(advanceF, field="w")
-keps_eqns["k"] = partial(advanceF, field="k")
-keps_eqns["eps"] = partial(advanceF, field="eps")
+keps_eqns["u"] = advanceF
+keps_eqns["w"] = advanceF
+keps_eqns["k"] = advanceF
+keps_eqns["eps"] = advanceF
 keps_eqns["v"] = advanceMass
 
 # Use the same marchSystemBase in SANDWake3D_base to advance the equations
