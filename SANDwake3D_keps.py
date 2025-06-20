@@ -108,7 +108,16 @@ def rhs_f_extra_forcing(field, phi, params, dy, dz):
         feps_const = params["feps_const"] if "feps_const" in params else 0.0
         Tscale = time_scale(phi["k"], phi["eps"], nu)
         dy_u, dz_u = np.gradient(phi["u"], dy, dz, edge_order=1)
-        return 0.0  # C1eps/Tscale*(sigmaeps*phi['nut']*(dy_u*dy_u) + phi['nut']*(dz_u*dz_u)) - C2eps*phi["eps"]/Tscale + feps_const
+        return (
+            C1eps
+            / Tscale
+            * (
+                sigmaeps * phi["nut"] * (dy_u * dy_u)
+                + sigmaeps * phi["nut"] * (dz_u * dz_u)
+            )
+            - C2eps * phi["eps"] / Tscale
+            + feps_const
+        )
     if field in ("u", "w"):
         fx_const = params["fx_const"] if "fx_const" in params else 0.0
         return fx_const
