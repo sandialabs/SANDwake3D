@@ -2,7 +2,6 @@
 
 import copy
 from collections import OrderedDict
-from functools import partial
 import numpy as np
 import SANDwake3D_base as sdb
 
