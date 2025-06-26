@@ -688,6 +688,164 @@ def advanceEPS(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc
 
     return eps_np1 #np.zeros((Ny, Nz))
 
+def RHS_T_nhalf(phi_np1, phi_n, Dz_nuT_tilde, dx, dy, dz, params):
+    """
+    Go from n to n+1/2 for the EPS equation
+    """
+    T_n       = phi_n['T']
+    phi_tilde = getPhiTilde(phi_np1, phi_n)
+    u_tilde, v_tilde, w_tilde = phi_tilde['u'], phi_tilde['v'], phi_tilde['w']
+    nuT_tilde = phi_tilde['nuT']
+
+    nu        = params['nu']
+    sigmaT    = params['sigmaT']
+
+    N  = u_tilde.shape
+    Ny = N[0]
+    Nz = N[1]
+    RHS = np.zeros((Ny, Nz))
+
+    nu_total = nuT_tilde/sigmaT
+    w_total  = w_tilde - Dz_nuT_tilde/sigmaT
+
+    # These loops can be optimized
+    for i in range(Ny):
+        j=0
+        RHS[i,j] = u_tilde[i,j]*T_n[i,j]/(0.5*dx) - w_total[i,j]/dz*D1zfor(T_n, i, j) + nu_total[i,j]*D2zfor(T_n, i, j)/(dz*dz)  
+        for j in range(1,Nz-1):
+            RHS[i,j] = u_tilde[i,j]*T_n[i,j]/(0.5*dx) - w_total[i,j]/dz*D1z(T_n, i, j) + nu_total[i,j]*D2z(T_n, i, j)/(dz*dz)
+        j=Nz-1
+        RHS[i,j] = u_tilde[i,j]*T_n[i,j]/(0.5*dx) - w_total[i,j]/dz*D1zback(T_n, i, j) + nu_total[i,j]*D2zback(T_n, i, j)/(dz*dz)
+    return RHS
+
+def RHS_T_np1(phi_np1, T_nhalf, phi_n, Dy_nuT_tilde, dx, dy, dz, params):
+    """
+    Go from n+1/2 to n+1 for the EPS equation
+    """
+    u_np1, u_n = phi_np1['u'], phi_n['u']
+    v_np1, v_n = phi_np1['v'], phi_n['v']
+    w_np1, w_n = phi_np1['w'], phi_n['w']
+    phi_tilde = getPhiTilde(phi_np1, phi_n)
+    u_tilde, v_tilde, w_tilde = phi_tilde['u'], phi_tilde['v'], phi_tilde['w']
+    nuT_tilde = phi_tilde['nuT']
+
+    nu     = params['nu']
+    sigmaT = params['sigmaT']
+
+    N  = u_n.shape
+    Ny = N[0]
+    Nz = N[1]
+    RHS = np.zeros((Ny, Nz))
+    
+    nu_total = nuT_tilde/sigmaT
+    v_total  = v_tilde - Dy_nuT_tilde/sigmaT
+
+    # These loops can be optimized
+    for j in range(Nz):
+        i=0
+        RHS[i,j] = u_tilde[i,j]*T_nhalf[i,j]/(0.5*dx) - v_total[i,j]/dy*D1yfor(T_nhalf, i, j) + nu_total[i,j]*D2yfor(T_nhalf, i, j)/(dy*dy)
+        for i in range(1,Ny-1):
+            RHS[i,j] = u_tilde[i,j]*T_nhalf[i,j]/(0.5*dx) - v_total[i,j]/dy*D1y(T_nhalf, i, j) + nu_total[i,j]*D2y(T_nhalf, i, j)/(dy*dy)
+        i=Ny-1
+        RHS[i,j] = u_tilde[i,j]*T_nhalf[i,j]/(0.5*dx) - v_total[i,j]/dy*D1yback(T_nhalf, i, j) + nu_total[i,j]*D2yback(T_nhalf, i, j)/(dy*dy) 
+    return RHS
+
+def advanceT(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc_zhi):
+    """
+    Advance the potential temperature one full step
+    """
+    #u_tilde, v_tilde, w_tilde = getTilde(phi_np1old, phi_n)
+    phi_tilde = getPhiTilde(phi_np1old, phi_n)
+    u_tilde, v_tilde, w_tilde = phi_tilde['u'], phi_tilde['v'], phi_tilde['w']
+    nuT_tilde = phi_tilde['nuT']
+
+    N  = u_tilde.shape
+    Ny = N[0]
+    Nz = N[1]
+
+    # Load parameters
+    nu       = params['nu']
+    sigmaT   = params['sigmaT']
+    fT_const = params['fT_const'] if 'fT_const' in params else 0.0
+    
+    # --- differentiation stencils ---
+    #                  j-1  j  j+1
+    Irow   = np.array([0,   1,  0])
+    Dcen   = np.array([-1,  0,  1])*0.5
+    D2cen  = np.array([1,  -2,  1])
+    # -------------------------------
+
+    # Compute some quantities related to nuT
+    Dz_nuT    = np.zeros((Ny, Nz))
+    # Note: This loop can definitely be optimized
+    for i in range(Ny):
+        for j in range(Nz):
+            if j==0:
+                Dz_nuT[i,j] = (nuT_tilde[i,j+1] - nuT_tilde[i,j])/dz
+            elif j==Nz-1:
+                Dz_nuT[i,j] = (nuT_tilde[i,j] - nuT_tilde[i,j-1])/dz
+            else:
+                Dz_nuT[i,j] = D1z(nuT_tilde, i, j)/dz 
+    # These loops can be optimized
+    Dy_nuT    = np.zeros((Ny, Nz))
+    for j in range(Nz):
+        i=0
+        Dy_nuT[i,j] = D1yfor(nuT_tilde, i, j)/dy
+        for i in range(1,Ny-1):
+            Dy_nuT[i,j] = D1y(nuT_tilde, i, j)/dy
+        i=Ny-1
+        Dy_nuT[i,j] = D1yback(nuT_tilde, i, j)/dy
+
+    nu_total = nuT_tilde/sigmaT
+    v_total  = v_tilde - Dy_nuT/sigmaT
+    w_total  = w_tilde - Dz_nuT/sigmaT
+
+    # First sweep: n -> n+1/2
+    # -----------------------
+    T_nhalf   = np.zeros((Ny, Nz))
+    RHS_nhalf = RHS_T_nhalf(phi_np1old, phi_n, Dz_nuT, dx, dy, dz, params) + fT_const
+    for j in range(Nz):
+        LHS_nhalf = np.zeros((Ny,3))
+        # == Set up the LHS matrices ==
+        for i in range(1,Ny-1):
+            LHS_nhalf[i,:] = u_tilde[i,j]/(0.5*dx)*Irow + v_total[i,j]*Dcen/dy - nu_total[i,j]*D2cen/(dy*dy)
+        # Apply BC's
+        row_lo, dentry_lo = applyBC(bc_ylo, 'lower', dy)
+        row_hi, dentry_hi = applyBC(bc_yhi, 'upper', dy)
+        LHS_nhalf[0,:]  = row_lo
+        LHS_nhalf[-1,:] = row_hi
+        RHS_nhalf[0,:]  = dentry_lo
+        RHS_nhalf[-1,:] = dentry_hi
+        # Solve the triadiagonal system
+        T_nhalf[:,j] = solvetridiag(LHS_nhalf, RHS_nhalf[:,j])
+
+    # Second sweep: n+1/2 -> n+1
+    # -----------------------
+    T_np1   = np.zeros((Ny, Nz))
+    RHS_np1 = RHS_T_np1(phi_np1old, T_nhalf, phi_n, Dy_nuT, dx, dy, dz, params) + fT_const
+    # == Set up the LHS matrices ==
+    for i in range(Ny):
+        LHS_np1 = np.zeros((Nz,3))
+        for j in range(1,Nz-1):
+            LHS_np1[j,:] = u_tilde[i,j]/(0.5*dx)*Irow + w_total[i,j]*Dcen/dz - nu_total[i,j]*D2cen/(dz*dz) 
+        # Apply BC's
+        row_lo, dentry_lo = applyBC(bc_zlo, 'lower', dz)
+        row_hi, dentry_hi = applyBC(bc_zhi, 'upper', dz)
+        if i==0:
+            row_lo, dentry_lo = applyBC({'type':'dirichlet', 'value':w_tilde[i,0]}, 'lower', dz)
+        if i==Ny-1:
+            row_hi, dentry_hi = applyBC({'type':'dirichlet', 'value':w_tilde[i,-1]}, 'lower', dz)            
+        LHS_np1[0,:]  = row_lo
+        LHS_np1[-1,:] = row_hi
+        RHS_np1[:,0]  = dentry_lo
+        RHS_np1[:,-1] = dentry_hi
+        #print(f'i = {i}\nRHS_np1 = ',RHS_np1[i,:], '\nLHS = ', LHS_np1)                
+        # Solve the triadiagonal system
+        T_np1[i,:] = solvetridiag(LHS_np1, RHS_np1[i,:], verbose=False)
+
+    return T_np1
+
+
 def advanceMass(phi_np1old, phi_n, dx, dy, dz, params, bc_ylo, bc_yhi, bc_zlo, bc_zhi):
     """
     Advance the continuity equation one full step
@@ -894,6 +1052,15 @@ keps_eqns['w']   = advanceW
 keps_eqns['k']   = advanceTKE
 keps_eqns['eps'] = advanceEPS
 keps_eqns['v']   = advanceMass
+
+# Define the laminar equation system with temperature
+kepsT_eqns        = OrderedDict()
+kepsT_eqns['u']   = advanceU
+kepsT_eqns['w']   = advanceW
+kepsT_eqns['k']   = advanceTKE
+kepsT_eqns['eps'] = advanceEPS
+kepsT_eqns['T']   = advanceT
+kepsT_eqns['v']   = advanceMass
 
 # Use the same marchSystemBase in SANDWake3D_base to advance the equations
 marchSystem = marchSystemBase
