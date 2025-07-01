@@ -430,7 +430,7 @@ def set_k_init(rvec, dr, u, params, k_factor=0.1):
 
 
 ########################################################
-# Define the laminar equation system
+# Define the keps equation system
 keps_eqns = OrderedDict()
 keps_eqns["u"] = advanceF
 keps_eqns["w"] = advanceF
@@ -438,6 +438,7 @@ keps_eqns["k"] = advanceF
 keps_eqns["eps"] = advanceF
 keps_eqns["v"] = advanceMass
 
+# Define the keps equation system with temperature
 kepsT_eqns = OrderedDict()
 kepsT_eqns["u"] = advanceF
 kepsT_eqns["w"] = advanceF
