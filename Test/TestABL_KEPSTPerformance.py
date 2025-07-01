@@ -90,6 +90,7 @@ def main():
     Vinit = np.zeros((Ny, Nz))
     Winit = np.zeros((Ny, Nz))
     Kinit = np.zeros((Ny, Nz))
+    Tinit  = np.ones((Ny, Nz))*300
     EPSinit = np.zeros((Ny, Nz))
 
     for iz, z in enumerate(zvec):
@@ -108,6 +109,7 @@ def main():
     phiinit["v"] = Vinit
     phiinit["w"] = Winit
     phiinit["k"] = Kinit
+    phiinit['T'] = Tinit
     phiinit["eps"] = EPSinit
 
     # Set boundary conditions
@@ -141,7 +143,13 @@ def main():
     epsbc["zlo"] = {"type": "dirichlet", "value": EPSinit[0, 0]}
     epsbc["zhi"] = {"type": "neumann", "value": 0.0}
 
-    allbc = {"u": ubc, "v": vbc, "w": wbc, "k": kbc, "eps": epsbc}
+    Tbc = {}
+    Tbc['ylo'] = {'type':'dirichlet', 'value':300}
+    Tbc['yhi'] = {'type':'dirichlet', 'value':300}
+    Tbc['zlo'] = {'type':'dirichlet', 'value':300}
+    Tbc['zhi'] = {'type':'dirichlet', 'value':300}
+
+    allbc = {'u':ubc, 'v':vbc, 'w':wbc, 'k':kbc, 'eps':epsbc, 'T':Tbc}
 
     # Set parameters
     params = {
@@ -153,6 +161,7 @@ def main():
         "C3eps": 0.033,
         "sigmak": 0.9,
         "sigmaeps": 1.3,
+        'sigmaT':1.0,
     }
 
     xvecplot = [0, 200, 300, 400]  # [0, 100]#[0, 100, 200, 300]
@@ -166,7 +175,7 @@ def main():
         dz,
         params,
         allbc,
-        SANDwake3D.keps_eqns,
+        SANDwake3D.kepsT_eqns,
         advanceSys=SANDwake3D.advanceSystemKEPS,
         verbose=True,
         maxiter=100,

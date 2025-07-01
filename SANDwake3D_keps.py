@@ -115,7 +115,7 @@ def rhs_f_extra_forcing(field, phi, aux_vars, params, dy, dz):
             - C2eps * phi["eps"] / Tscale
             + feps_const
         )
-    if field in ("u", "w"):
+    if field in ("u", "w", "T"):
         fx_const = params["fx_const"] if "fx_const" in params else 0.0
         return fx_const
     return 0
@@ -437,6 +437,14 @@ keps_eqns["w"] = advanceF
 keps_eqns["k"] = advanceF
 keps_eqns["eps"] = advanceF
 keps_eqns["v"] = advanceMass
+
+kepsT_eqns = OrderedDict()
+kepsT_eqns["u"] = advanceF
+kepsT_eqns["w"] = advanceF
+kepsT_eqns["k"] = advanceF
+kepsT_eqns["eps"] = advanceF
+kepsT_eqns['T']   = advanceF
+kepsT_eqns["v"] = advanceMass
 
 # Use the same marchSystemBase in SANDWake3D_base to advance the equations
 marchSystem = sdb.marchSystemBase
