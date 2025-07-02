@@ -84,17 +84,21 @@ def applyBC(bcdict, location, dz):
         return Dstencil, bcdict['value']
     return None
 
-def getTilde(phi_np1, phi_n):
+def getTildeVel(phi_np1, phi_n):
     """
     Get the averaged velocities for the convective term
     """
-    u_np1, u_n = phi_np1['u'], phi_n['u']
-    v_np1, v_n = phi_np1['v'], phi_n['v']
-    w_np1, w_n = phi_np1['w'], phi_n['w']
-    u_tilde = 0.5*(u_np1 + u_n)
-    v_tilde = 0.5*(v_np1 + v_n)
-    w_tilde = 0.5*(w_np1 + w_n)
-    return u_tilde, v_tilde, w_tilde
+    phi_tilde = getTildeVars(phi_np1, phi_n)
+    return phi_tilde['u'], phi_tilde['v'], phi_tilde['w']
+
+def getTildeVars(phi_np1, phi_n):
+    """
+    Get the averaged quantities for the convective term
+    """
+    phiTilde = {}
+    for v in phi_n:
+        phiTilde[v] = 0.5*(phi_np1[v] + phi_n[v])
+    return phiTilde
 
 def convergetest(phi_new, phi_old, tol):
     """
