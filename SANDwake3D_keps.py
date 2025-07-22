@@ -159,6 +159,10 @@ def advanceF(field, phi_np1old, phi_n, phi_tilde, aux_vars, dx, dy, dz, params, 
     inv_dz2 = 1.0 / (dz * dz)
     row_lo, dentry_lo = sdb.applyBC(bcvar["ylo"], "lower", dy)
     row_hi, dentry_hi = sdb.applyBC(bcvar["yhi"], "upper", dy)
+    if not isinstance(dentry_lo, np.ndarray):
+        dentry_lo = dentry_lo*np.ones(nz)
+    if not isinstance(dentry_hi, np.ndarray):
+        dentry_hi = dentry_hi*np.ones(nz)
     for j in range(nz):
         lhs_nhalf = np.zeros((ny, 3))
         # == Set up the LHS matrices ==
@@ -170,8 +174,8 @@ def advanceF(field, phi_np1old, phi_n, phi_tilde, aux_vars, dx, dy, dz, params, 
         # Apply BC's
         lhs_nhalf[0, :] = row_lo
         lhs_nhalf[-1, :] = row_hi
-        rhs_nhalf[0, :] = dentry_lo
-        rhs_nhalf[-1, :] = dentry_hi
+        rhs_nhalf[0, :] = dentry_lo[j]
+        rhs_nhalf[-1, :] = dentry_hi[j]
         # print(f'j = {j}\nrhs_nhalf = ',rhs_nhalf[:,j], '\nLHS = ', lhs_nhalf)
         # Solve the triadiagonal system
         f_nhalf[:, j] = sdb.solvetridiag(lhs_nhalf, rhs_nhalf[:, j])
@@ -187,6 +191,10 @@ def advanceF(field, phi_np1old, phi_n, phi_tilde, aux_vars, dx, dy, dz, params, 
     # == Set up the LHS matrices ==
     row_lo_base, dentry_lo_base = sdb.applyBC(bcvar["zlo"], "lower", dz)
     row_hi_base, dentry_hi_base = sdb.applyBC(bcvar["zhi"], "upper", dz)
+    if not isinstance(dentry_lo_base, np.ndarray):
+        dentry_lo_base = dentry_lo_base*np.ones(ny)
+    if not isinstance(dentry_hi_base, np.ndarray):
+        dentry_hi_base = dentry_hi_base*np.ones(ny)
     for i in range(ny):
         lhs_np1 = np.zeros((nz, 3))
         lhs_np1[1:-1, :] = (
@@ -195,8 +203,8 @@ def advanceF(field, phi_np1old, phi_n, phi_tilde, aux_vars, dx, dy, dz, params, 
             - nu_total[i, 1:-1, np.newaxis] * inv_dz2 * d2cen
         )
         # Apply BC's
-        row_lo, dentry_lo = row_lo_base, dentry_lo_base
-        row_hi, dentry_hi = row_hi_base, dentry_hi_base
+        row_lo, dentry_lo = row_lo_base, dentry_lo_base[i]
+        row_hi, dentry_hi = row_hi_base, dentry_hi_base[i]
         if i == 0:
             row_lo, dentry_lo = sdb.applyBC(
                 {"type": "dirichlet", "value": phi_tilde[field][i, 0]}, "lower", dz
@@ -273,6 +281,13 @@ def advanceSystemKEPS(
         phi_n["nut"] = get_nut(phi_n, params["Cmu"], params["nu"])
     phi_n1 = copy.deepcopy(phi_n)
 
+    # Create a registry of which BC functions are used in this system
+    BCfuncreg = {}
+    for v, bcgroup in allbcs.items():
+        for face, bc in bcgroup.items():
+            if (bc['type'] == 'bcfunc') and (bc['tag'] not in BCfuncreg):
+                BCfuncreg[bc['tag']] = bc['func']
+
     for k in range(maxiter):
         phi_next = OrderedDict()
         phi_n1["nut"] = get_nut(phi_n1, params["Cmu"], params["nu"])
@@ -287,9 +302,17 @@ def advanceSystemKEPS(
             phi_tilde["u"], dy, dz, edge_order=1
         )
 
+        # Update the boundary conditions (if necessary)
+        updatedbcs = copy.deepcopy(allbcs)
+        for tag, bcfunc in BCfuncreg.items():
+            # NEED TO DECIDE ON FUNCTION SIGNATURE HERE
+            newbcvals = bcfunc(phi_tilde, aux_vars, params)
+            for v, vbc in newbcvals.items():
+                updatedbcs[v].update(vbc)
+
         # Loop over all variables
         for v in varlist:
-            bcvar = allbcs[v]
+            bcvar = updatedbcs[v] #allbcs[v]
 
             sigma = f"""sigma{v}"""
             if sigma in params:
