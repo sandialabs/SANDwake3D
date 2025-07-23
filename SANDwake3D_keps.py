@@ -342,7 +342,8 @@ def advanceSystemKEPS(
         converged, convergedat = sdb.convergetest(phi_next, phi_n1, tol)
         phi_n1 = copy.deepcopy(phi_next)
         if verbose:
-            print(k, convergedat)
+            print(f"[{k}] "+ ", ".join(f"{k}: {v:0.4e}" for k, v in convergedat.items()))
+            #print(k, convergedat)
         if converged:
             break
     # Check if k hit maxiter:
