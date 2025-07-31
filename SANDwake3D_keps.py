@@ -303,10 +303,16 @@ def advanceSystemKEPS(
         )
 
         # Update the boundary conditions (if necessary)
+        bcdebug={}
         updatedbcs = copy.deepcopy(allbcs)
         for tag, bcfunc in BCfuncreg.items():
-            # NEED TO DECIDE ON FUNCTION SIGNATURE HERE
-            newbcvals = bcfunc(phi_tilde, aux_vars, params)
+            # LCC: NEED TO DECIDE ON FUNCTION SIGNATURE HERE
+            newbc = bcfunc(phi_tilde, aux_vars, params, debugout=verbose)
+            # Capture any debug info from the BC
+            if isinstance(newbc, tuple):
+                newbcvals, bcdebug[tag] = newbc[0], newbc[1]
+            else:
+                newbcvals = newbc
             for v, vbc in newbcvals.items():
                 updatedbcs[v].update(vbc)
 
@@ -343,9 +349,14 @@ def advanceSystemKEPS(
         phi_n1 = copy.deepcopy(phi_next)
         if verbose:
             print(f"[{k}] "+ ", ".join(f"{k}: {v:0.4e}" for k, v in convergedat.items()))
-            #print(k, convergedat)
         if converged:
             break
+
+    # Print output any BC debug information 
+    if verbose:
+        for tag, debugout in bcdebug.items():
+            print(tag+': '+repr(debugout))
+
     # Check if k hit maxiter:
     # -->TODO!
     return phi_n1
@@ -412,6 +423,18 @@ def MO_eps(z, K, L, ustar):
     phie = phi_e(z, L)
     return (ustar**3)/(K*z)*phie
 
+def MO_Tfunc(z, z0, K, L, Tstar, g, cp):
+    phim = phi_m(z, L)
+    if L == float('inf'):
+        dT = 0.0
+    elif L < 0:
+        dT = Tstar/K*( np.log(z/z0)
+                       - 2.0*np.log(0.5*(1+phim**-2)) ) - g/cp*(z-z0)
+    else:
+        dT = Tstar/K*( np.log(z/z0)
+                       + phim - 1 ) - g/cp*(z-z0)
+    return dT 
+
 # Initial condition stuff
 def init_U_ABL(z, param):
     """
@@ -466,29 +489,37 @@ def set_k_init(rvec, dr, u, params, k_factor=0.1):
 
 ########################################################
 # Wall model stuff
-# https://github.com/lawrenceccheung/AMRWind_RANSBC/blob/main/literature/Alinot-k_Eps_ABL_Stratified-2005.pdf
+# 
+# See https://github.com/lawrenceccheung/AMRWind_RANSBC/blob/main/literature/Alinot-k_Eps_ABL_Stratified-2005.pdf
 
-def MO_wallmodel(phi, aux, param):
+def MO_wallmodel(phi, aux, param, debugout=False):
     """
     Compute all wall model variables
     """
+    useT = True if 'T' in phi.keys() else False
+    
     z0  = param["z0"]
-    L   = param["L"]
     K   = param["kappa"]
     nu  = param["nu"]
     zlo = param["zlo"]
     Cmu = param["Cmu"]
 
+    L   = param["Lnext"] if "Lnext" in param else param["L"]
+    
     nut   = get_nut(phi, Cmu, nu)[:,0]
     dz_u   = np.abs(aux["dz_u"][:,0])
     ustar = np.sqrt((nu+nut)*dz_u)
-    ulo   = MO_u0(zlo, z0, K, L, ustar)
-    #print('ustar = ',np.mean(ustar), np.mean(ulo))
 
+    # Calculate Monin-Obukhov lengths
+    ulo   = MO_u0(zlo, z0, K, L, ustar)
     klo   = MO_k0(zlo, L, ustar)
     epslo = MO_eps(zlo, K, L, ustar)
-    #print('klo = ', np.mean(klo), np.mean(epslo))
-    
+
+    debugoutput = {
+        'ustar':np.mean(ustar),
+    }
+
+    # Assign the boundary conditions for each variable
     ubc = {
         'zlo':{'type':'dirichlet', 'value':ulo},
         }
@@ -497,15 +528,41 @@ def MO_wallmodel(phi, aux, param):
         }
     ebc = {
         'zlo':{'type':'dirichlet', 'value':epslo},
-        }
-    
+        }    
     allbc = {
         'u':ubc,
         'k':kbc,
         'eps':ebc,
-    } 
+    }
+
+    # Add temperature BC if required
+    if useT:
+        g   = param["g"]
+        cp  = param["cp"]
+        Tw  = param["Tw"]
+        qw  = param["qw"]
+        rho = param["rho"]
+
+        Tstar = -qw/(rho*cp*ustar)    # Eq. (15), Alinot & Masson
+        dT  = MO_Tfunc(zlo, z0, K, L, Tstar, g, cp)
+        Tbc = {
+            'zlo':{'type':'dirichlet', 'value':(Tw + dT)},
+            }
+        allbc['T'] = Tbc
+        
+        # Calculate the next L value
+        invTstar = np.array([1/x if np.abs(x)>0 else float('inf') for x in Tstar ])
+        Lnext = (ustar**2)*Tw/(K*g)*invTstar  # Eq. 12 in Alinot & Masson
+        # TODO: generalize to use vector valued L in the future
+        param['Lnext'] = np.mean(Lnext)
+        
+        debugoutput['Lnext'] = np.mean(Lnext)
+
     
-    return allbc
+    if debugout:
+        return allbc, debugoutput
+    else:
+        return allbc
 
 ########################################################
 # Define the keps equation system
