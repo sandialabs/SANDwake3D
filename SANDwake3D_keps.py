@@ -352,8 +352,7 @@ def advanceSystemKEPS(
 
 
 ########################################################
-# Initial condition stuff
-def mo_windshear(z, L):
+def phi_m(z, L):
     """
     Compute Monin-Obukhov wind shear
     """
@@ -366,18 +365,26 @@ def mo_windshear(z, L):
     return 1 + 5 * z / L
 
 
-def init_U_ABL(z, param):
+def phi_e(z, L):
     """
-    Initialize ABL profile from Monin-Obukhov theory
+    Compute Monin-Obukhov epsilon variable
     """
-    z0 = param["z0"]
-    L = param["L"]
-    K = param["kappa"]
-    rho = param["rho"]
-    ustar = param["ustar"]
+    phim = phi_m(z, L)
 
-    phim = mo_windshear(z, L)
+    if L < 0:
+        phie = 1 - z / L
+    elif L == float("inf"):
+        phie = phim
+    else:
+        phie = phim - z / L
+    return phie
+    
 
+def MO_u0(z, z0, K, L, ustar):
+    """
+    See equation 16 in Alinot and Masson
+    """
+    phim = phi_m(z, L)
     if L < 0:
         return (
             ustar
@@ -392,39 +399,44 @@ def init_U_ABL(z, param):
     else:
         return ustar / K * (np.log(z / z0) + phim - 1)
 
+def MO_k0(z, L, ustar):
+    """
+    See equation 20 in Alinot and Masson
+    """
+    phim = phi_m(z, L)
+    phie = phi_e(z, L)
+    return 5.48 * ustar**2 * (phie / phim) ** 0.5
+    
+
+def MO_eps(z, K, L, ustar):
+    phie = phi_e(z, L)
+    return (ustar**3)/(K*z)*phie
+
+# Initial condition stuff
+def init_U_ABL(z, param):
+    """
+    Initialize ABL profile from Monin-Obukhov theory
+    """
+    z0 = param["z0"]
+    L = param["L"]
+    K = param["kappa"]
+    ustar = param["ustar"]
+
+    return MO_u0(z, z0, K, L, ustar)
+    
 
 def init_e_ABL(z, param):
     L = param["L"]
     K = param["kappa"]
     ustar = param["ustar"]
-
-    phim = mo_windshear(z, L)
-
-    if L < 0:
-        phie = 1 - z / L
-    elif L == float("inf"):
-        phie = phim
-    else:
-        phie = phim - z / L
-
-    return ustar**3 / (K * z) * phie
+    return MO_eps(z, K, L, ustar)
 
 
 def init_k_ABL(z, param):
     L = param["L"]
-    K = param["kappa"]
     ustar = param["ustar"]
 
-    phim = mo_windshear(z, L)
-
-    if L < 0:
-        phie = 1 - z / L
-    elif L == float("inf"):
-        phie = phim
-    else:
-        phie = phim - z / L
-
-    return 5.48 * ustar**2 * (phie / phim) ** 0.5
+    return MO_k0(z, L, ustar)
 
 
 def set_e_init(zvec, dz, u, k, params):
@@ -452,6 +464,48 @@ def set_k_init(rvec, dr, u, params, k_factor=0.1):
     k_init *= C
     return k_init
 
+########################################################
+# Wall model stuff
+# https://github.com/lawrenceccheung/AMRWind_RANSBC/blob/main/literature/Alinot-k_Eps_ABL_Stratified-2005.pdf
+
+def MO_wallmodel(phi, aux, param):
+    """
+    Compute all wall model variables
+    """
+    z0  = param["z0"]
+    L   = param["L"]
+    K   = param["kappa"]
+    nu  = param["nu"]
+    zlo = param["zlo"]
+    Cmu = param["Cmu"]
+
+    nut   = get_nut(phi, Cmu, nu)[:,0]
+    dz_u   = np.abs(aux["dz_u"][:,0])
+    ustar = np.sqrt((nu+nut)*dz_u)
+    ulo   = MO_u0(zlo, z0, K, L, ustar)
+    #print('ustar = ',np.mean(ustar), np.mean(ulo))
+
+    klo   = MO_k0(zlo, L, ustar)
+    epslo = MO_eps(zlo, K, L, ustar)
+    #print('klo = ', np.mean(klo), np.mean(epslo))
+    
+    ubc = {
+        'zlo':{'type':'dirichlet', 'value':ulo},
+        }
+    kbc = {
+        'zlo':{'type':'dirichlet', 'value':klo},
+        }
+    ebc = {
+        'zlo':{'type':'dirichlet', 'value':epslo},
+        }
+    
+    allbc = {
+        'u':ubc,
+        'k':kbc,
+        'eps':ebc,
+    } 
+    
+    return allbc
 
 ########################################################
 # Define the keps equation system
