@@ -114,7 +114,7 @@ def convergetest(phi_new, phi_old, tol):
             break
     return converged, convergevar
 
-def advanceSystem(phi_n, dx, dy, dz, params, allbcs, eqnsys, maxiter=100,
+def advanceSystem(phi_n, x, dx, dy, dz, params, allbcs, eqnsys, maxiter=100,
                   tol=1.0E-6, verbose=False):
     """
     Advance equation system 1 step in x
@@ -128,7 +128,7 @@ def advanceSystem(phi_n, dx, dy, dz, params, allbcs, eqnsys, maxiter=100,
         # Loop over all variables
         for v in varlist:
             bcvar = allbcs[v]
-            phi_next[v] = eqnsys[v](phi_n1, phi_n, dx, dy, dz, params,
+            phi_next[v] = eqnsys[v](phi_n1, phi_n, x, dx, dy, dz, params,
                                     bcvar['ylo'], bcvar['yhi'], bcvar['zlo'], bcvar['zhi'])
         # Test for convergence
         converged, convergedat = convergetest(phi_next, phi_n1, tol)
@@ -169,7 +169,7 @@ def marchSystemBase(phi_init, xvec, dy, dz, params, allbcs, eqnsys,
         dx = x-xprev
         if verbose:
             print(f'x = {x} dx = {dx}')
-        phinext = advanceSys(phiprev, dx, dy, dz, params, allbcs, eqnsys, verbose=verbose, maxiter=maxiter, tol=tol)
+        phinext = advanceSys(phiprev, x, dx, dy, dz, params, allbcs, eqnsys, verbose=verbose, maxiter=maxiter, tol=tol)
         for v in varlist:
             phi[v][xi+1,:,:] = phinext[v]
         phiprev = phinext.copy()
