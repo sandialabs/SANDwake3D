@@ -115,6 +115,14 @@ def rhs_f_extra_forcing(field, phi, aux_vars, params, dy, dz):
             - C2eps * phi["eps"] / Tscale
             + feps_const
         )
+    if field == "p":
+        # du_j/dx_i du_i/dx_j = dx_U**2 + dy_V**2 + dz_W**2 + 2*(dx_V*dy_U + dx_W*dz_U + dy_W*dz_V)
+        term1 = - (
+                   aux_vars["dx_u"]**2 + aux_vars["dy_v"] + aux_vars["dz_w"]**2
+                  ) - 2.0*(  aux_vars["dx_v"]*aux_vars["dy_u"]
+                             + aux_vars["dx_w"]*aux_vars["dz_u"]
+                             + aux_vars["dy_w"]*aux_vars["dz_v"])
+        return term1
     if field in ("u", "w", "T"):
         fx_const = params["fx_const"] if "fx_const" in params else 0.0
         return fx_const
@@ -276,11 +284,14 @@ def advanceSystemKEPS(
     Advance equation system 1 step in x
     """
     varlist = [v for v, g in eqnsys.items()]
-
+    invdx   = 1.0/dx
+    
     if "nut" not in phi_n:
         phi_n["nut"] = get_nut(phi_n, params["Cmu"], params["nu"])
     phi_n1 = copy.deepcopy(phi_n)
 
+    dxphi = lambda phin1, phin, v, invdx: (phin1[v] - phin[v])*invdx
+    
     # Create a registry of which BC functions are used in this system
     BCfuncreg = {}
     for v, bcgroup in allbcs.items():
@@ -301,6 +312,16 @@ def advanceSystemKEPS(
         aux_vars["dy_u"], aux_vars["dz_u"] = np.gradient(
             phi_tilde["u"], dy, dz, edge_order=1
         )
+        # These aux_vars needed for pressure Poisson
+        aux_vars["dy_v"], aux_vars["dz_v"] = np.gradient(
+            phi_tilde["v"], dy, dz, edge_order=1
+        )
+        aux_vars["dy_w"], aux_vars["dz_w"] = np.gradient(
+            phi_tilde["v"], dy, dz, edge_order=1
+        )
+        aux_vars["dx_u"] = dxphi(phi_n1, phi_n, "u", invdx)
+        aux_vars["dx_v"] = dxphi(phi_n1, phi_n, "v", invdx)
+        aux_vars["dx_w"] = dxphi(phi_n1, phi_n, "w", invdx)
 
         # Update the boundary conditions (if necessary)
         bcdebug={}

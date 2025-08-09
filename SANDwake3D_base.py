@@ -100,10 +100,13 @@ def getTildeVars(phi_np1, phi_n):
         phiTilde[v] = 0.5*(phi_np1[v] + phi_n[v])
     return phiTilde
 
-def convergetest(phi_new, phi_old, tol):
+def convergetest(phi_new, phi_old, tol, testvars=None):
     """
     """
-    varlist = [v for v, g in phi_new.items()]
+    if testvars is None:
+        varlist = [v for v, g in phi_new.items()]
+    else:
+        varlist = testvars
     convergevar = {}
     for v in varlist:
         convergevar[v] = np.linalg.norm(phi_new[v] - phi_old[v])
