@@ -80,7 +80,7 @@ def rhs_f_np1(f_nhalf, phi_tilde, dy_nut_tilde, dx, dy, params):
     return rhs
 
 
-def rhs_f_extra_forcing(field, phi, aux_vars, params, x, dx, dy, dz):
+def rhs_f_extra_forcing(field, phi, phi_n, aux_vars, params, x, dx, dy, dz):
     """
     Compute the RHS extra forcing if necessary
     """
@@ -120,9 +120,13 @@ def rhs_f_extra_forcing(field, phi, aux_vars, params, x, dx, dy, dz):
         zm       = params['zm']
         turbdict = params['turbforcing']
         xturb    = turbdict['turbx']
-        turbADfunc = turbdict['turbfunc']
         if np.abs(xturb-x)< (dx-1.0E-3):
-            return turbADfunc(dx, ym, zm, turbdict)
+            zhh  = turbdict['zhh']
+            yhh  = turbdict['turby']
+            R    = turbdict['turbD']*0.5
+            Uinf = sdb.rotorAvgUh(ym, zm, phi_n['u'], phi_n['v'], yhh, zhh, R)
+            turbADfunc = turbdict['turbfunc']
+            return turbADfunc(dx, ym, zm, Uinf, turbdict)
         
     # NOTE: This conditional down here needs to be generalized
     if field in ("u", "w", "T"):
@@ -153,7 +157,7 @@ def advanceF(field, phi_np1old, phi_n, phi_tilde, aux_vars, x, dx, dy, dz, param
     v_total = v_tilde - aux_vars["dy_nut"]
     w_total = w_tilde - aux_vars["dz_nut"]
 
-    rhs_extra_forcing = rhs_f_extra_forcing(field, phi_tilde, aux_vars, params, x, dx, dy, dz)
+    rhs_extra_forcing = rhs_f_extra_forcing(field, phi_tilde, phi_n, aux_vars, params, x, dx, dy, dz)
 
     # First sweep: n -> n+1/2
     # -----------------------

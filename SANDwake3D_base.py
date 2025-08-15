@@ -175,3 +175,32 @@ def marchSystemBase(phi_init, xvec, dy, dz, params, allbcs, eqnsys,
         phiprev = phinext.copy()
         xprev = x
     return phi
+
+############################################
+########## TURBINE MODEL ROUTINES ##########
+############################################
+
+def rotorAvgUh(ym, zm, u, v, yhh, zhh, R):
+    """
+    Compute the rotor average velocity
+    """
+    Uh = np.sqrt(u**2 + v**2)
+    maskoutside = ((zm-zhh)**2 + (ym-yhh)**2 > R**2)
+    masked_vel  = np.ma.array(Uh, mask=maskoutside)
+    return masked_vel.mean()
+
+
+def tanhADM(dx, y,z, Uinf, params):
+    """
+    A uniformly loaded actuator disk
+    """
+    zhh    = params['zhh']
+    yhh    = params['turby']
+    Rdelta = params['Rdelta']
+    turbR  = params['turbD']*0.5
+    Ct     = params['Ct']
+    r  = np.sqrt((y-yhh)**2 + (z-zhh)**2)
+    F1 = 0.0                      # Force at infinity (should be zero)
+    F0 = (0.5*Ct*Uinf**2)/dx      # Force on disk
+    Fr = 0.5*(F1-F0)*(1.0 + np.tanh((r-turbR)/Rdelta)) + F0
+    return -Fr 
