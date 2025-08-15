@@ -80,7 +80,7 @@ def rhs_f_np1(f_nhalf, phi_tilde, dy_nut_tilde, dx, dy, params):
     return rhs
 
 
-def rhs_f_extra_forcing(field, phi, aux_vars, params, dy, dz):
+def rhs_f_extra_forcing(field, phi, phi_n, aux_vars, params, x, dx, dy, dz):
     """
     Compute the RHS extra forcing if necessary
     """
@@ -115,13 +115,27 @@ def rhs_f_extra_forcing(field, phi, aux_vars, params, dy, dz):
             - C2eps * phi["eps"] / Tscale
             + feps_const
         )
+    if (field in ("u")) and 'turbforcing' in params:
+        ym       = params['ym']
+        zm       = params['zm']
+        turbdict = params['turbforcing']
+        xturb    = turbdict['turbx']
+        if np.abs(xturb-x)< (dx-1.0E-3):
+            zhh  = turbdict['zhh']
+            yhh  = turbdict['turby']
+            R    = turbdict['turbD']*0.5
+            Uinf = sdb.rotorAvgUh(ym, zm, phi_n['u'], phi_n['v'], yhh, zhh, R)
+            turbADfunc = turbdict['turbfunc']
+            return turbADfunc(dx, ym, zm, Uinf, turbdict)
+        
+    # NOTE: This conditional down here needs to be generalized
     if field in ("u", "w", "T"):
         fx_const = params["fx_const"] if "fx_const" in params else 0.0
         return fx_const
     return 0
 
 
-def advanceF(field, phi_np1old, phi_n, phi_tilde, aux_vars, dx, dy, dz, params, bcvar):
+def advanceF(field, phi_np1old, phi_n, phi_tilde, aux_vars, x, dx, dy, dz, params, bcvar):
     """
     Advance the field one full step
     """
@@ -143,7 +157,7 @@ def advanceF(field, phi_np1old, phi_n, phi_tilde, aux_vars, dx, dy, dz, params, 
     v_total = v_tilde - aux_vars["dy_nut"]
     w_total = w_tilde - aux_vars["dz_nut"]
 
-    rhs_extra_forcing = rhs_f_extra_forcing(field, phi_tilde, aux_vars, params, dy, dz)
+    rhs_extra_forcing = rhs_f_extra_forcing(field, phi_tilde, phi_n, aux_vars, params, x, dx, dy, dz)
 
     # First sweep: n -> n+1/2
     # -----------------------
@@ -231,6 +245,7 @@ def advanceMass(
     phi_n,
     phi_tilde,
     aux_vars,
+    x,
     dx,
     dy,
     dz,
@@ -270,7 +285,7 @@ def get_nut(phi, cmu, nu):
 
 
 def advanceSystemKEPS(
-    phi_n, dx, dy, dz, params, allbcs, eqnsys, maxiter=100, tol=1.0e-6, verbose=False
+    phi_n, x, dx, dy, dz, params, allbcs, eqnsys, maxiter=100, tol=1.0e-6, verbose=False
 ):
     """
     Advance equation system 1 step in x
@@ -332,6 +347,7 @@ def advanceSystemKEPS(
                 phi_n,
                 phi_tilde,
                 aux_vars,
+                x,
                 dx,
                 dy,
                 dz,
