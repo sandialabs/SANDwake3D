@@ -117,7 +117,7 @@ def convergetest(phi_new, phi_old, tol, testvars=None):
             break
     return converged, convergevar
 
-def advanceSystem(phi_n, dx, dy, dz, params, allbcs, eqnsys, maxiter=100,
+def advanceSystem(phi_n, x, dx, dy, dz, params, allbcs, eqnsys, maxiter=100,
                   tol=1.0E-6, verbose=False):
     """
     Advance equation system 1 step in x
@@ -131,7 +131,7 @@ def advanceSystem(phi_n, dx, dy, dz, params, allbcs, eqnsys, maxiter=100,
         # Loop over all variables
         for v in varlist:
             bcvar = allbcs[v]
-            phi_next[v] = eqnsys[v](phi_n1, phi_n, dx, dy, dz, params,
+            phi_next[v] = eqnsys[v](phi_n1, phi_n, x, dx, dy, dz, params,
                                     bcvar['ylo'], bcvar['yhi'], bcvar['zlo'], bcvar['zhi'])
         # Test for convergence
         converged, convergedat = convergetest(phi_next, phi_n1, tol)
@@ -172,9 +172,38 @@ def marchSystemBase(phi_init, xvec, dy, dz, params, allbcs, eqnsys,
         dx = x-xprev
         if verbose:
             print(f'x = {x} dx = {dx}')
-        phinext = advanceSys(phiprev, dx, dy, dz, params, allbcs, eqnsys, verbose=verbose, maxiter=maxiter, tol=tol)
+        phinext = advanceSys(phiprev, x, dx, dy, dz, params, allbcs, eqnsys, verbose=verbose, maxiter=maxiter, tol=tol)
         for v in varlist:
             phi[v][xi+1,:,:] = phinext[v]
         phiprev = phinext.copy()
         xprev = x
     return phi
+
+############################################
+########## TURBINE MODEL ROUTINES ##########
+############################################
+
+def rotorAvgUh(ym, zm, u, v, yhh, zhh, R):
+    """
+    Compute the rotor average velocity
+    """
+    Uh = np.sqrt(u**2 + v**2)
+    maskoutside = ((zm-zhh)**2 + (ym-yhh)**2 > R**2)
+    masked_vel  = np.ma.array(Uh, mask=maskoutside)
+    return masked_vel.mean()
+
+
+def tanhADM(dx, y,z, Uinf, params):
+    """
+    A uniformly loaded actuator disk
+    """
+    zhh    = params['zhh']
+    yhh    = params['turby']
+    Rdelta = params['Rdelta']
+    turbR  = params['turbD']*0.5
+    Ct     = params['Ct']
+    r  = np.sqrt((y-yhh)**2 + (z-zhh)**2)
+    F1 = 0.0                      # Force at infinity (should be zero)
+    F0 = (0.5*Ct*Uinf**2)/dx      # Force on disk
+    Fr = 0.5*(F1-F0)*(1.0 + np.tanh((r-turbR)/Rdelta)) + F0
+    return -Fr 
