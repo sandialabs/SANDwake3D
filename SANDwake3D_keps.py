@@ -277,6 +277,130 @@ def advanceMass(
     return v_np1
 
 
+def RHS_p_nhalf(p, dtau, dy, dz):
+    """
+    Go from m to m+1/2
+    """
+    N  = p.shape
+    Ny = N[0]
+    Nz = N[1]
+    RHS = np.zeros((Ny, Nz))
+    for i in range(1,Ny-1):
+        for j in range(1,Nz-1):
+            RHS[i,j] = p[i,j]/(dtau*0.5) - (p[i,j+1] -2.0*p[i,j] + p[i,j-1])/(dz*dz)
+    return RHS
+
+def RHS_p_np1(p, dtau, dy, dz):
+    """
+    Go from m+1/2 to m+1
+    """
+    N  = p.shape
+    Ny = N[0]
+    Nz = N[1]
+    RHS = np.zeros((Ny, Nz))
+    for i in range(1,Ny-1):
+        for j in range(1,Nz-1):
+            RHS[i,j] = p[i,j]/(dtau*0.5) - (p[i+1,j] -2.0*p[i,j] + p[i-1,j])/(dy*dy)
+    return RHS
+
+def advanceP(
+    field,
+    phi_np1old,
+    phi_n,
+    phi_tilde,
+    aux_vars,
+    x,
+    dx,
+    dy,
+    dz,
+    params,
+    bcvar,
+):
+    """
+    Advance the pressure Poisson equation one full step (in artificial time!)
+    """
+    p_np1, p_n = phi_np1old["p"], phi_n["p"]
+    ny, nz = p_n.shape
+    
+    # --- differentiation stencils ---
+    #                  j-1  j  j+1
+    Irow   = np.array([0,   1,  0])
+    Dcen   = np.array([-1,  0,  1])
+    D2cen  = np.array([1,  -2,  1])
+    # -------------------------------
+
+    dtau = params['dtau']
+
+    # First sweep: m -> m+1/2
+    # -----------------------
+    p_nhalf = np.zeros((ny, nz))
+    rhs_nhalf = (
+        RHS_p_nhalf(p_n, dtau, dy, dz) + 0.0
+    )
+    inv_half_dx = 2.0 / dx
+    inv_dy = 1.0 / dy
+    inv_dy2 = 1.0 / (dy * dy)
+    inv_dz = 1.0 / dz
+    inv_dz2 = 1.0 / (dz * dz)
+    row_lo, dentry_lo = sdb.applyBC(bcvar["ylo"], "lower", dy)
+    row_hi, dentry_hi = sdb.applyBC(bcvar["yhi"], "upper", dy)
+    if not isinstance(dentry_lo, np.ndarray):
+        dentry_lo = dentry_lo*np.ones(nz)
+    if not isinstance(dentry_hi, np.ndarray):
+        dentry_hi = dentry_hi*np.ones(nz)
+    for j in range(nz):
+        lhs_nhalf = np.zeros((ny, 3))
+        # == Set up the LHS matrices ==
+        lhs_nhalf[1:-1, :] = (
+            inv_half_dtau * irow + inv_dy2 * d2cen
+        )
+        # Apply BC's
+        lhs_nhalf[0, :] = row_lo
+        lhs_nhalf[-1, :] = row_hi
+        rhs_nhalf[0, :] = dentry_lo[j]
+        rhs_nhalf[-1, :] = dentry_hi[j]
+        # Solve the triadiagonal system
+        p_nhalf[:, j] = sdb.solvetridiag(lhs_nhalf, rhs_nhalf[:, j])
+
+    # Second sweep: m+1/2 -> m+1
+    # -----------------------
+    p_np1 = np.zeros((ny, nz))
+    rhs_np1 = (
+        RHS_p_nhalf(p_nhalf, dtau, dy, dz) + 0.0
+    )
+    # == Set up the LHS matrices ==
+    row_lo_base, dentry_lo_base = sdb.applyBC(bcvar["zlo"], "lower", dz)
+    row_hi_base, dentry_hi_base = sdb.applyBC(bcvar["zhi"], "upper", dz)
+    if not isinstance(dentry_lo_base, np.ndarray):
+        dentry_lo_base = dentry_lo_base*np.ones(ny)
+    if not isinstance(dentry_hi_base, np.ndarray):
+        dentry_hi_base = dentry_hi_base*np.ones(ny)
+    for i in range(ny):
+        lhs_np1 = np.zeros((nz, 3))
+        lhs_np1[1:-1, :] = (
+            inv_half_dtau * irow + inv_dz2 * d2cen
+        )
+        # Apply BC's
+        row_lo, dentry_lo = row_lo_base, dentry_lo_base[i]
+        row_hi, dentry_hi = row_hi_base, dentry_hi_base[i]
+        if i == 0:
+            row_lo, dentry_lo = sdb.applyBC(
+                {"type": "dirichlet", "value": phi_tilde[field][i, 0]}, "lower", dz
+            )
+        elif i == ny - 1:
+            row_hi, dentry_hi = sdb.applyBC(
+                {"type": "dirichlet", "value": phi_tilde[field][i, -1]}, "lower", dz
+            )
+        lhs_np1[0, :] = row_lo
+        lhs_np1[-1, :] = row_hi
+        rhs_np1[:, 0] = dentry_lo
+        rhs_np1[:, -1] = dentry_hi
+        # Solve the triadiagonal system
+        p_np1[i, :] = sdb.solvetridiag(lhs_np1, rhs_np1[i, :], verbose=False)
+        # print('f_np1 = ',f_np1[i,:])
+    return p_np1
+
+
 def time_scale(k, eps, nu):
     """
     Compute time scale
