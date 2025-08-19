@@ -453,17 +453,11 @@ def advanceSystemKEPS(
     """
     varlist = [v for v, g in eqnsys.items()]
     convergevars = copy.deepcopy(varlist)
-    if 'p' in varlist:
-        hasp    = True
-        #convergevars.remove('p')
-    else:
-        hasp    = False
         
     invdx   = 1.0/dx
     
     if "nut" not in phi_n:
         phi_n["nut"] = get_nut(phi_n, params["Cmu"], params["nu"])
-    #if hasp:  phi_n['p'] = np.zeros(phi_n['p'].shape)
     phi_n1 = copy.deepcopy(phi_n)
 
     dxphi = lambda phin1, phin, v, invdx: (phin1[v] - phin[v])*invdx
@@ -590,10 +584,10 @@ def advanceSystemKEPS(
 
     # Print output any BC debug information 
     if verbose:
+        dil = aux_vars['dx_u'] + aux_vars['dy_v'] + aux_vars['dz_w']
+        bcdebug['avg_dil'] = np.linalg.norm(dil)/dil.size
         for tag, debugout in bcdebug.items():
             print(tag+': '+repr(debugout))
-        dil = aux_vars['dx_u'] + aux_vars['dy_v'] + aux_vars['dz_w']
-        print('AVG DILITATION: %e'%(np.linalg.norm(dil)/dil.size))
 
     # Check if k hit maxiter:
     # -->TODO!
