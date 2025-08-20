@@ -128,16 +128,26 @@ def rhs_f_extra_forcing(field, phi, phi_n, aux_vars, params, x, dx, dy, dz):
         zm       = params['zm']
         turbdict = params['turbforcing']
         xturb    = turbdict['turbx']
+        rho      = 1.0  #FIX THIS!
+        fx       = -1.0/rho*aux_vars["dx_p"]
         if np.abs(xturb-x)< (dx-1.0E-3):
             zhh  = turbdict['zhh']
             yhh  = turbdict['turby']
             R    = turbdict['turbD']*0.5
             Uinf = sdb.rotorAvgUh(ym, zm, phi_n['u'], phi_n['v'], yhh, zhh, R)
             turbADfunc = turbdict['turbfunc']
-            return turbADfunc(dx, ym, zm, Uinf, turbdict)
+            fx +=  turbADfunc(dx, ym, zm, Uinf, turbdict)
+        return fx
+
+    if field in ( "v"):
+        rho = 1.0  #FIX THIS!!
+        return -1.0/rho*aux_vars["dy_p"]
+    if field in ( "w"):
+        rho = 1.0  #FIX THIS!!
+        return -1.0/rho*aux_vars["dz_p"]
         
     # NOTE: This conditional down here needs to be generalized
-    if field in ("w", "T"):
+    if field in ( "T"):
         fx_const = params["fx_const"] if "fx_const" in params else 0.0
         return fx_const
     return 0
@@ -324,20 +334,23 @@ def advanceP(
     
     # --- differentiation stencils ---
     #                  j-1  j  j+1
-    Irow   = np.array([0,   1,  0])
-    Dcen   = np.array([-1,  0,  1])
-    D2cen  = np.array([1,  -2,  1])
+    irow = np.array([0, 1, 0])
+    dcen = np.array([-1, 0, 1]) * 0.5
+    d2cen = np.array([1, -2, 1])
     # -------------------------------
 
     dtau = params['dtau']
+
+    rhs_extra_forcing = rhs_f_extra_forcing(field, phi_tilde, phi_n, aux_vars, params, x, dx, dy, dz)
 
     # First sweep: m -> m+1/2
     # -----------------------
     p_nhalf = np.zeros((ny, nz))
     rhs_nhalf = (
-        RHS_p_nhalf(p_n, dtau, dy, dz) + 0.0
+        RHS_p_nhalf(p_n, dtau, dy, dz) + rhs_extra_forcing
     )
-    inv_half_dx = 2.0 / dx
+    #inv_half_dx = 2.0 / dx
+    inv_half_dtau = 2.0 / dtau
     inv_dy = 1.0 / dy
     inv_dy2 = 1.0 / (dy * dy)
     inv_dz = 1.0 / dz
@@ -366,7 +379,7 @@ def advanceP(
     # -----------------------
     p_np1 = np.zeros((ny, nz))
     rhs_np1 = (
-        RHS_p_nhalf(p_nhalf, dtau, dy, dz) + 0.0
+        RHS_p_nhalf(p_nhalf, dtau, dy, dz) + rhs_extra_forcing
     )
     # == Set up the LHS matrices ==
     row_lo_base, dentry_lo_base = sdb.applyBC(bcvar["zlo"], "lower", dz)
@@ -423,10 +436,20 @@ def advanceSystemKEPS(
     Advance equation system 1 step in x
     """
     varlist = [v for v, g in eqnsys.items()]
+    convergevars = copy.deepcopy(varlist)
+    if 'p' in varlist:
+        hasp    = True
+        #convergevars.remove('p')
+    else:
+        hasp    = False
+    print(convergevars)
+        
     invdx   = 1.0/dx
     
     if "nut" not in phi_n:
         phi_n["nut"] = get_nut(phi_n, params["Cmu"], params["nu"])
+    if hasp:
+        phi_n['p'] = np.zeros(phi_n['p'].shape)
     phi_n1 = copy.deepcopy(phi_n)
 
     dxphi = lambda phin1, phin, v, invdx: (phin1[v] - phin[v])*invdx
@@ -458,9 +481,13 @@ def advanceSystemKEPS(
         aux_vars["dy_w"], aux_vars["dz_w"] = np.gradient(
             phi_tilde["v"], dy, dz, edge_order=1
         )
+        aux_vars["dy_p"], aux_vars["dz_p"] = np.gradient(
+            phi_tilde["p"], dy, dz, edge_order=1
+        )
         aux_vars["dx_u"] = dxphi(phi_n1, phi_n, "u", invdx)
         aux_vars["dx_v"] = dxphi(phi_n1, phi_n, "v", invdx)
         aux_vars["dx_w"] = dxphi(phi_n1, phi_n, "w", invdx)
+        aux_vars["dx_p"] = dxphi(phi_n1, phi_n, "p", invdx)
 
         # Update the boundary conditions (if necessary)
         bcdebug={}
@@ -506,7 +533,7 @@ def advanceSystemKEPS(
                 aux_vars["dz_nut"] *= params[sigma]
 
         # Test for convergence
-        converged, convergedat = sdb.convergetest(phi_next, phi_n1, tol)
+        converged, convergedat = sdb.convergetest(phi_next, phi_n1, tol, testvars=convergevars)
         phi_n1 = copy.deepcopy(phi_next)
         if verbose:
             print(f"[{k}] "+ ", ".join(f"{k}: {v:0.4e}" for k, v in convergedat.items()))
@@ -741,7 +768,8 @@ kepsT_eqns["w"] = advanceF
 kepsT_eqns["k"] = advanceF
 kepsT_eqns["eps"] = advanceF
 kepsT_eqns['T']   = advanceF
-kepsT_eqns["v"] = advanceMass
+kepsT_eqns["v"] = advanceF #advanceMass
+kepsT_eqns["p"] = advanceP
 
 # Use the same marchSystemBase in SANDWake3D_base to advance the equations
 marchSystem = sdb.marchSystemBase
