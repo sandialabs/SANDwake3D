@@ -118,17 +118,33 @@ def rhs_f_extra_forcing(field, phi, phi_n, aux_vars, params, x, dx, dy, dz):
     if field == "p":
         # du_j/dx_i du_i/dx_j = dx_U**2 + dy_V**2 + dz_W**2 + 2*(dx_V*dy_U + dx_W*dz_U + dy_W*dz_V)
         term1 = - (
-                   aux_vars["dx_u"]**2 + aux_vars["dy_v"] + aux_vars["dz_w"]**2
+                   aux_vars["dx_u"]**2 + aux_vars["dy_v"]**2 + aux_vars["dz_w"]**2
                   ) - 2.0*(  aux_vars["dx_v"]*aux_vars["dy_u"]
                              + aux_vars["dx_w"]*aux_vars["dz_u"]
                              + aux_vars["dy_w"]*aux_vars["dz_v"])
-        return term1
+        term2 = ( aux_vars["dx_nut"]*(aux_vars["dyy_u"] + aux_vars["dzz_u"]) +
+                  aux_vars["dy_nut"]*(aux_vars["dyy_v"] + aux_vars["dzz_v"]) +
+                  aux_vars["dz_nut"]*(aux_vars["dyy_w"] + aux_vars["dzz_w"]) 
+                  )
+        term3 = ( aux_vars["dyx_nut"]*aux_vars["dy_u"] +
+                  aux_vars["dyy_nut"]*aux_vars["dy_v"] +
+                  aux_vars["dyz_nut"]*aux_vars["dy_w"]
+                  )
+        term4 = ( aux_vars["dzx_nut"]*aux_vars["dz_u"] +
+                  aux_vars["dyz_nut"]*aux_vars["dz_v"] +
+                  aux_vars["dzz_nut"]*aux_vars["dz_w"]
+                  )
+
+        g = params['g']
+        beta = params['beta']
+        termT  = g*beta*aux_vars["dz_T"]
+        return term1 + term2 + term3 + term4 + termT
     if (field in ("u")) and 'turbforcing' in params:
         ym       = params['ym']
         zm       = params['zm']
         turbdict = params['turbforcing']
         xturb    = turbdict['turbx']
-        rho      = 1.0  #FIX THIS!
+        rho      = 1.0  # REMINDER -- the rho's cancel out in the Poisson equation 
         fx       = -1.0/rho*aux_vars["dx_p"]
         if np.abs(xturb-x)< (dx-1.0E-3):
             zhh  = turbdict['zhh']
@@ -140,10 +156,10 @@ def rhs_f_extra_forcing(field, phi, phi_n, aux_vars, params, x, dx, dy, dz):
         return fx
 
     if field in ( "v"):
-        rho = 1.0  #FIX THIS!!
+        rho = 1.0  # REMINDER -- the rho's cancel out in the Poisson equation 
         return -1.0/rho*aux_vars["dy_p"]
     if field in ( "w"):
-        rho = 1.0  #FIX THIS!!
+        rho = 1.0  # REMINDER -- the rho's cancel out in the Poisson equation 
         return -1.0/rho*aux_vars["dz_p"]
         
     # NOTE: This conditional down here needs to be generalized
@@ -442,14 +458,12 @@ def advanceSystemKEPS(
         #convergevars.remove('p')
     else:
         hasp    = False
-    print(convergevars)
         
     invdx   = 1.0/dx
     
     if "nut" not in phi_n:
         phi_n["nut"] = get_nut(phi_n, params["Cmu"], params["nu"])
-    if hasp:
-        phi_n['p'] = np.zeros(phi_n['p'].shape)
+    #if hasp:  phi_n['p'] = np.zeros(phi_n['p'].shape)
     phi_n1 = copy.deepcopy(phi_n)
 
     dxphi = lambda phin1, phin, v, invdx: (phin1[v] - phin[v])*invdx
@@ -488,6 +502,40 @@ def advanceSystemKEPS(
         aux_vars["dx_v"] = dxphi(phi_n1, phi_n, "v", invdx)
         aux_vars["dx_w"] = dxphi(phi_n1, phi_n, "w", invdx)
         aux_vars["dx_p"] = dxphi(phi_n1, phi_n, "p", invdx)
+        aux_vars["dx_nut"] = dxphi(phi_n1, phi_n, "nut", invdx)
+        aux_vars["dyy_u"], aux_vars["dyz_u"] = np.gradient(
+            aux_vars["dy_u"], dy, dz, edge_order=1
+        )
+        aux_vars["dyz_u"], aux_vars["dzz_u"] = np.gradient(
+            aux_vars["dz_u"], dy, dz, edge_order=1
+        )
+        aux_vars["dyy_v"], aux_vars["dyz_v"] = np.gradient(
+            aux_vars["dy_v"], dy, dz, edge_order=1
+        )
+        aux_vars["dyz_w"], aux_vars["dzz_w"] = np.gradient(
+            aux_vars["dz_w"], dy, dz, edge_order=1
+        )
+        aux_vars["dyz_v"], aux_vars["dzz_v"] = np.gradient(
+            aux_vars["dz_v"], dy, dz, edge_order=1
+        )
+        aux_vars["dyy_w"], aux_vars["dyz_w"] = np.gradient(
+            aux_vars["dy_w"], dy, dz, edge_order=1
+        )
+
+        # Nu_t cross-derivatives
+        aux_vars["dyx_nut"], aux_vars["dzx_nut"] = np.gradient(
+            aux_vars["dx_nut"], dy, dz, edge_order=1
+        )
+        aux_vars["dyy_nut"], aux_vars["dyz_nut"] = np.gradient(
+            aux_vars["dy_nut"], dy, dz, edge_order=1
+        )
+        aux_vars["dyz_nut"], aux_vars["dzz_nut"] = np.gradient(
+            aux_vars["dz_nut"], dy, dz, edge_order=1
+        )
+
+        aux_vars["dy_T"], aux_vars["dz_T"] = np.gradient(
+            phi_tilde["T"], dy, dz, edge_order=1
+        )
 
         # Update the boundary conditions (if necessary)
         bcdebug={}
@@ -544,6 +592,8 @@ def advanceSystemKEPS(
     if verbose:
         for tag, debugout in bcdebug.items():
             print(tag+': '+repr(debugout))
+        dil = aux_vars['dx_u'] + aux_vars['dy_v'] + aux_vars['dz_w']
+        print('AVG DILITATION: %e'%(np.linalg.norm(dil)/dil.size))
 
     # Check if k hit maxiter:
     # -->TODO!
