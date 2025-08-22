@@ -4,6 +4,7 @@ import numpy as np
 from scipy.linalg.lapack import dgbsv
 import copy
 from collections import OrderedDict
+import yaml
 
 def solvetridiag(matrow, b, verbose=False):
     """
@@ -192,6 +193,32 @@ def rotorAvgUh(ym, zm, u, v, yhh, zhh, R):
     masked_vel  = np.ma.array(Uh, mask=maskoutside)
     return masked_vel.mean()
 
+def CtTableLookup(Uinf, turbinefile):
+    # Extract wind speed / Ct data from yaml file
+    with open(turbinefile, 'r') as file:
+        data = yaml.safe_load(file)
+    wind_speeds = data['power_thrust_table']['wind_speed']
+    thrust_coefficients = data['power_thrust_table']['thrust_coefficient']
+    
+    # Check if the wind speed is outside of the range of the data
+    if Uinf < np.min(wind_speeds) or Uinf > np.max(wind_speeds):
+        return 0
+
+    # If Uinf matches a value in the table, return the corresponding Ct
+    if Uinf in wind_speeds:
+        i = wind_speeds.index(Uinf)
+        Ct = thrust_coefficients[index]
+        return Ct
+    
+    # If Uinf is between values in the table, linearly interpolate between the two closest values to calculate Ct
+    for i in range(len(wind_speeds) - 1):
+        if wind_speeds[i] <= Uinf <= wind_speeds[i + 1]:
+            # Perform linear interpolation for thrust_coefficient
+            Ct = thrust_coefficients[i] + (thrust_coefficients[i + 1] - thrust_coefficients[i]) * ((Uinf - wind_speeds[i]) / (wind_speeds[i + 1] - wind_speeds[i]))
+            return Ct
+    
+    # return Ct=0 if none of the above conditions are met (which I think is impossible, but can't hurt to have a failsafe)
+    return 0
 
 def tanhADM(dx, y,z, Uinf, params):
     """
@@ -201,7 +228,7 @@ def tanhADM(dx, y,z, Uinf, params):
     yhh    = params['turby']
     Rdelta = params['Rdelta']
     turbR  = params['turbD']*0.5
-    Ct     = params['Ct']
+    Ct     = CtTableLookup(Uinf, params['turbinefilename'])
     r  = np.sqrt((y-yhh)**2 + (z-zhh)**2)
     F1 = 0.0                      # Force at infinity (should be zero)
     F0 = (0.5*Ct*Uinf**2)/dx      # Force on disk
