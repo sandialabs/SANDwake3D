@@ -455,7 +455,7 @@ def time_scale(k, eps, nu):
     """
     Compute time scale
     """
-    return np.fmax(k / eps, 6.0 * np.sqrt(nu / eps))
+    return np.fmax(k / eps, 6.0 * np.sqrt(nu / np.abs(eps)))
 
 
 def get_nut(phi, cmu, nu):
@@ -568,7 +568,8 @@ def advanceSystemKEPS(
         aux_vars["Gb"] = params["beta"]*ghat[2]*phi_tilde["nut"]/params["sigmaT"]*aux_vars["dz_T"]
 
         # Compute the Boussinesq bouyancy TKE term
-        aux_vars["B_z"] = -ghat[2]*params["beta"]*(phi_tilde["T"]-params["Tref"])
+        Tref = phi_n["T"]
+        aux_vars["B_z"] = -ghat[2]*params["beta"]*(phi_tilde["T"]-Tref)
 
         # Update the boundary conditions (if necessary)
         bcdebug={}
@@ -840,7 +841,7 @@ def MO_wallmodel(phi, aux, param, dy, dz, debugout=False):
         param['Lnext'] = np.mean(Lnext)
         
         debugoutput['Lnext'] = np.mean(Lnext)
-
+        debugoutput['Tstar'] = np.mean(Tstar)
     
     if debugout:
         return allbc, debugoutput
@@ -916,6 +917,18 @@ def getTypicalWMBC(Uinf, TBC, veerBC=None):
 
     allbc = {'u':ubc, 'v':vbc, 'w':wbc, 'k':kbc, 'eps':epsbc, 'T':Tbc, 'p':pbc}
     return allbc
+
+def getUVfromUhVeer(Uh, veer, format='deg'):
+    """
+    Calculate the U, V velocity profiles from the Uh and veer profile
+    """
+    Nz = len(Uh)
+    U  = np.zeros(Nz)
+    V  = np.zeros(Nz)
+    for i in range(Nz):
+        U[i] = Uh[i]*np.cos(veer[i]*np.pi/180.0)
+        V[i] = Uh[i]*np.sin(veer[i]*np.pi/180.0)
+    return U, V
 
 ########################################################
 # Define the keps equation system
