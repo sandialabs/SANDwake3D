@@ -536,7 +536,8 @@ def advanceSystemKEPS(
         updatedbcs = copy.deepcopy(allbcs)
         for tag, bcfunc in BCfuncreg.items():
             # LCC: NEED TO DECIDE ON FUNCTION SIGNATURE HERE
-            newbc = bcfunc(phi_tilde, aux_vars, params, debugout=verbose)
+            newbc = bcfunc(phi_tilde, aux_vars, params, dy, dz,
+                           debugout=verbose)
             # Capture any debug info from the BC
             if isinstance(newbc, tuple):
                 newbcvals, bcdebug[tag] = newbc[0], newbc[1]
@@ -724,7 +725,7 @@ def set_k_init(rvec, dr, u, params, k_factor=0.1):
 # 
 # See https://github.com/lawrenceccheung/AMRWind_RANSBC/blob/main/literature/Alinot-k_Eps_ABL_Stratified-2005.pdf
 
-def MO_wallmodel(phi, aux, param, debugout=False):
+def MO_wallmodel(phi, aux, param, dy, dz, debugout=False):
     """
     Compute all wall model variables
     """
@@ -739,11 +740,14 @@ def MO_wallmodel(phi, aux, param, debugout=False):
     L   = param["Lnext"] if "Lnext" in param else param["L"]
     
     nut   = get_nut(phi, Cmu, nu)[:,0]
-    dz_u   = np.abs(aux["dz_u"][:,0])
+    Uh    = np.sqrt(phi['u']**2 + phi['v']**2)
+    dy_Uh, dz_Uh = np.gradient(Uh, dy, dz, edge_order=1)
+    dz_u   = np.abs(dz_Uh[:,0])
+    #dz_u   = np.abs(aux["dz_u"][:,0])
     ustar = np.sqrt((nu+nut)*dz_u)
 
     # Calculate Monin-Obukhov lengths
-    ulo   = MO_u0(zlo, z0, K, L, ustar)
+    uh_lo = MO_u0(zlo, z0, K, L, ustar)
     klo   = MO_k0(zlo, L, ustar)
     epslo = MO_eps(zlo, K, L, ustar)
 
@@ -751,9 +755,16 @@ def MO_wallmodel(phi, aux, param, debugout=False):
         'ustar':np.mean(ustar),
     }
 
+    # break the WM velocity into U and V components
+    ulo   = uh_lo*phi['u'][:,0]/Uh[:,0]
+    vlo   = uh_lo*phi['v'][:,0]/Uh[:,0]
+    
     # Assign the boundary conditions for each variable
     ubc = {
         'zlo':{'type':'dirichlet', 'value':ulo},
+        }
+    vbc = {
+        'zlo':{'type':'dirichlet', 'value':vlo},
         }
     kbc = {
         'zlo':{'type':'dirichlet', 'value':klo},
@@ -763,6 +774,7 @@ def MO_wallmodel(phi, aux, param, debugout=False):
         }    
     allbc = {
         'u':ubc,
+        'v':vbc,
         'k':kbc,
         'eps':ebc,
     }
@@ -797,6 +809,76 @@ def MO_wallmodel(phi, aux, param, debugout=False):
         return allbc
 
 ########################################################
+def getTypicalWMBC(Uinf, TBC, veerBC=None):
+    """
+    Define the "typical" wall-model boundary conditions
+    """
+
+    # Decide on the type of BC for V
+    if veerBC is None:
+        veerV = 0.0
+        v_zhi = 0.0
+    else:
+        veerV = veerBC
+        v_zhi = veerV[-1]
+
+    # Decide on the type of BC for T
+    if not isinstance(TBC, np.ndarray):
+        T_zhi = TBC
+    else:
+        T_zhi = TBC[-1]
+    
+    ubc = {}
+    ubc['ylo'] = {'type':'neumann', 'value':0.0}
+    ubc['yhi'] = {'type':'neumann', 'value':0.0}
+    ubc['zlo'] = {'type':'bcfunc',  'value':None,
+                  'tag':'ZLO_WALLBC',  'func':MO_wallmodel}
+    ubc['zhi'] = {'type':'dirichlet', 'value':Uinf}
+
+    vbc = {}
+    vbc['ylo'] = {'type':'dirichlet', 'value':veerV}
+    vbc['yhi'] = {'type':'dirichlet', 'value':veerV}
+    vbc['zlo'] = {'type':'bcfunc',    'value':None,
+                  'tag':'ZLO_WALLBC',  'func':MO_wallmodel}  
+    vbc['zhi'] = {'type':'dirichlet', 'value':v_zhi}
+
+    wbc = {}
+    wbc['ylo'] = {'type':'neumann', 'value':0.0}
+    wbc['yhi'] = {'type':'neumann', 'value':0.0}
+    wbc['zlo'] = {'type':'dirichlet', 'value':0.0}
+    wbc['zhi'] = {'type':'neumann', 'value':0.0}
+
+    kbc = {}
+    kbc['ylo'] = {'type':'neumann', 'value':0.0}
+    kbc['yhi'] = {'type':'neumann', 'value':0.0}
+    kbc['zlo'] = {'type':'bcfunc',  'value':None,
+                  'tag':'ZLO_WALLBC',  'func':MO_wallmodel}
+    kbc['zhi'] = {'type':'neumann', 'value':0.0}
+
+    epsbc = {}
+    epsbc['ylo'] = {'type':'neumann', 'value':0.0}
+    epsbc['yhi'] = {'type':'neumann', 'value':0.0}
+    epsbc['zlo'] = {'type':'bcfunc',  'value':None,
+                    'tag':'ZLO_WALLBC',  'func':MO_wallmodel}
+    epsbc['zhi'] = {'type':'neumann', 'value':0.0}
+
+    Tbc = {}
+    Tbc['ylo'] = {'type':'dirichlet', 'value':TBC}
+    Tbc['yhi'] = {'type':'dirichlet', 'value':TBC}
+    Tbc['zlo'] = {'type':'bcfunc',    'value':None,
+                  'tag':'ZLO_WALLBC',  'func':MO_wallmodel}
+    Tbc['zhi'] = {'type':'dirichlet', 'value':T_zhi}
+
+    pbc = {}
+    pbc['ylo'] = {'type':'neumann', 'value':0.0}
+    pbc['yhi'] = {'type':'neumann', 'value':0.0}
+    pbc['zlo'] = {'type':'dirichlet', 'value':0.0}
+    pbc['zhi'] = {'type':'neumann', 'value':0.0}
+
+    allbc = {'u':ubc, 'v':vbc, 'w':wbc, 'k':kbc, 'eps':epsbc, 'T':Tbc, 'p':pbc}
+    return allbc
+
+########################################################
 # Define the keps equation system
 keps_eqns = OrderedDict()
 keps_eqns["u"] = advanceF
@@ -817,3 +899,5 @@ kepsT_eqns["p"] = advanceP
 
 # Use the same marchSystemBase in SANDWake3D_base to advance the equations
 marchSystem = sdb.marchSystemBase
+
+
