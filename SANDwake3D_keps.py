@@ -171,13 +171,13 @@ def rhs_f_extra_forcing(field, phi, phi_n, aux_vars, params, x, dx, dy, dz):
         xturb    = turbdict['turbx']
         rho      = 1.0  # REMINDER -- the rho's cancel out in the Poisson equation 
         fx       = -1.0/rho*aux_vars["dx_p"]
-        if np.abs(xturb-x)< (dx-1.0E-3):
+        if np.abs(xturb-x)< (0.5*dx-1.0E-3):
             zhh  = turbdict['zhh']
             yhh  = turbdict['turby']
             R    = turbdict['turbD']*0.5
             Uinf = sdb.rotorAvgUh(ym, zm, phi_n['u'], phi_n['v'], yhh, zhh, R)
             turbADfunc = turbdict['turbfunc']
-            fx +=  turbADfunc(dx, ym, zm, Uinf, turbdict)
+            fx +=  turbADfunc(dx, ym, zm, Uinf, phi_n, turbdict)
         return fx
 
     if field in ( "v"):
@@ -618,7 +618,7 @@ def advanceSystemKEPS(
         # Test for convergence
         converged, convergedat = sdb.convergetest(phi_next, phi_n1, tol, testvars=convergevars)
         phi_n1 = copy.deepcopy(phi_next)
-        if verbose:
+        if verbose>1:
             print(f"[{k}] "+ ", ".join(f"{k}: {v:0.4e}" for k, v in convergedat.items()))
         if converged:
             break
@@ -632,6 +632,9 @@ def advanceSystemKEPS(
 
     # Check if k hit maxiter:
     # -->TODO!
+    if (k==maxiter-1):
+        print('WARNING: CONVERGENCE FAILED: ')
+        print(f"[{k}] "+ ", ".join(f"{k}: {v:0.4e}" for k, v in convergedat.items()))
     return phi_n1
 
 
@@ -837,6 +840,7 @@ def MO_wallmodel(phi, aux, param, dy, dz, debugout=False):
         # Calculate the next L value
         invTstar = np.array([1/x if np.abs(x)>0 else float('inf') for x in Tstar ])
         Lnext = (ustar**2)*Tw/(K*g)*invTstar  # Eq. 12 in Alinot & Masson
+
         # TODO: generalize to use vector valued L in the future
         param['Lnext'] = np.mean(Lnext)
         
@@ -849,16 +853,26 @@ def MO_wallmodel(phi, aux, param, dy, dz, debugout=False):
         return allbc
 
 ########################################################
-def getTypicalWMBC(Uinf, TBC, veerBC=None):
+def getTypicalWMBC(Uinf, TBC, uBC_y=None, veerBC=None, dTdz=None):
     """
     Define the "typical" wall-model boundary conditions
     """
 
     # Decide on the type of BC for V
+    if uBC_y is None:
+        utype = 'neumann'
+        uval  = 0.0
+    else:
+        utype = 'dirichlet'
+        uval  = uBC_y
+
+    # Decide on the type of BC for V
     if veerBC is None:
+        vtype = 'neumann'
         veerV = 0.0
         v_zhi = 0.0
     else:
+        vtype = 'dirichlet'
         veerV = veerBC
         v_zhi = veerV[-1]
 
@@ -869,22 +883,24 @@ def getTypicalWMBC(Uinf, TBC, veerBC=None):
         T_zhi = TBC[-1]
     
     ubc = {}
-    ubc['ylo'] = {'type':'neumann', 'value':0.0}
-    ubc['yhi'] = {'type':'neumann', 'value':0.0}
+    ubc['ylo'] = {'type':utype,     'value':uval}
+    ubc['yhi'] = {'type':utype,     'value':uval}
     ubc['zlo'] = {'type':'bcfunc',  'value':None,
                   'tag':'ZLO_WALLBC',  'func':MO_wallmodel}
     ubc['zhi'] = {'type':'dirichlet', 'value':Uinf}
 
     vbc = {}
-    vbc['ylo'] = {'type':'dirichlet', 'value':veerV}
-    vbc['yhi'] = {'type':'dirichlet', 'value':veerV}
+    vbc['ylo'] = {'type':vtype,      'value':veerV}
+    vbc['yhi'] = {'type':vtype,      'value':veerV}
+    #vbc['ylo'] = {'type':'neumann', 'value':0.0}
+    #vbc['yhi'] = {'type':'neumann', 'value':0.0}
     vbc['zlo'] = {'type':'bcfunc',    'value':None,
                   'tag':'ZLO_WALLBC',  'func':MO_wallmodel}  
     vbc['zhi'] = {'type':'dirichlet', 'value':v_zhi}
 
     wbc = {}
-    wbc['ylo'] = {'type':'neumann', 'value':0.0}
-    wbc['yhi'] = {'type':'neumann', 'value':0.0}
+    wbc['ylo'] = {'type':'dirichlet', 'value':0.0}
+    wbc['yhi'] = {'type':'dirichlet', 'value':0.0}
     wbc['zlo'] = {'type':'dirichlet', 'value':0.0}
     wbc['zhi'] = {'type':'neumann', 'value':0.0}
 
@@ -907,7 +923,10 @@ def getTypicalWMBC(Uinf, TBC, veerBC=None):
     Tbc['yhi'] = {'type':'dirichlet', 'value':TBC}
     Tbc['zlo'] = {'type':'bcfunc',    'value':None,
                   'tag':'ZLO_WALLBC',  'func':MO_wallmodel}
-    Tbc['zhi'] = {'type':'dirichlet', 'value':T_zhi}
+    if dTdz is None:
+        Tbc['zhi'] = {'type':'dirichlet', 'value':T_zhi}
+    else:
+        Tbc['zhi'] = {'type':'neumann', 'value':dTdz}
 
     pbc = {}
     pbc['ylo'] = {'type':'neumann', 'value':0.0}

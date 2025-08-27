@@ -219,7 +219,7 @@ def CtTableLookup(Uinf, params):
     return np.interp(Uinf, wind_speeds, thrust_coefficients, left=0.0, right=0.0)
     
 
-def tanhADM(dx, y,z, Uinf, params):
+def tanhADM(dx, y,z, Uinf, phi, params):
     """
     A uniformly loaded actuator disk
     """
@@ -229,7 +229,8 @@ def tanhADM(dx, y,z, Uinf, params):
     turbR  = params['turbD']*0.5
     Ct     = CtTableLookup(Uinf, params)
     r  = np.sqrt((y-yhh)**2 + (z-zhh)**2)
+    Ulocal = np.sqrt(phi['u']**2 + phi['v']**2)
     F1 = 0.0                      # Force at infinity (should be zero)
-    F0 = (0.5*Ct*Uinf**2)/dx      # Force on disk
+    F0 = (0.5*Ct*Ulocal**2)/dx      # Force on disk
     Fr = 0.5*(F1-F0)*(1.0 + np.tanh((r-turbR)/Rdelta)) + F0
     return -Fr 
