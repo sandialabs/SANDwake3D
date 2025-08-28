@@ -307,26 +307,22 @@ def RHS_p_nhalf(p, dtau, dy, dz):
     """
     Go from m to m+1/2
     """
-    N  = p.shape
-    Ny = N[0]
-    Nz = N[1]
-    RHS = np.zeros((Ny, Nz))
-    for i in range(1,Ny-1):
-        for j in range(1,Nz-1):
-            RHS[i,j] = p[i,j]/(dtau*0.5) - (p[i,j+1] -2.0*p[i,j] + p[i,j-1])/(dz*dz)
+    Ny, Nz = p.shape
+    RHS = np.zeros(p.shape)
+    RHS[1:Ny-1, 1:Nz-1] = p[1:Ny-1, 1:Nz-1] / (dtau * 0.5) - (
+        (p[1:Ny-1, 2:Nz] - 2.0 * p[1:Ny-1, 1:Nz-1] + p[1:Ny-1, 0:Nz-2]) / (dz**2)
+    )
     return RHS
 
 def RHS_p_np1(p, dtau, dy, dz):
     """
     Go from m+1/2 to m+1
     """
-    N  = p.shape
-    Ny = N[0]
-    Nz = N[1]
-    RHS = np.zeros((Ny, Nz))
-    for i in range(1,Ny-1):
-        for j in range(1,Nz-1):
-            RHS[i,j] = p[i,j]/(dtau*0.5) - (p[i+1,j] -2.0*p[i,j] + p[i-1,j])/(dy*dy)
+    Ny, Nz = p.shape
+    RHS = np.zeros(p.shape)
+    RHS[1:Ny-1, 1:Nz-1] = p[1:Ny-1, 1:Nz-1] / (dtau * 0.5) - (
+        (p[2:Ny, 1:Nz-1] - 2.0 * p[1:Ny-1, 1:Nz-1] + p[0:Ny-2, 1:Nz-1]) / (dy**2)
+    )
     return RHS
 
 def advanceP(

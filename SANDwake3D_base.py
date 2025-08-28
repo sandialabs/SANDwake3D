@@ -4,6 +4,7 @@ import numpy as np
 from scipy.linalg.lapack import dgbsv
 import copy
 from collections import OrderedDict
+import yaml
 
 def solvetridiag(matrow, b, verbose=False):
     """
@@ -192,6 +193,31 @@ def rotorAvgUh(ym, zm, u, v, yhh, zhh, R):
     masked_vel  = np.ma.array(Uh, mask=maskoutside)
     return masked_vel.mean()
 
+def CtTableLookup(Uinf, params):
+    """
+    Return the Ct value based on tables or file inputs from the params dictionary
+    Options:
+    (A) params['CtCpSource']=='FlorisFile'
+        ==> pull Ct from FLORIS definition in params['turbinefilename']
+    (B) params['CtCpSource']!='FlorisFile'
+        if params['Ct'] is scalar, return that
+        if params['Ct'] is list, return interpolated value from params['WS'] and params['Ct'] 
+    """
+    if ('CtCpSource' in params) and (params['CtCpSource']=='FlorisFile'):
+        turbinefile=params['turbinefilename']
+        # Extract wind speed / Ct data from yaml file
+        with open(turbinefile, 'r') as file:
+            data = yaml.safe_load(file)
+        wind_speeds = data['power_thrust_table']['wind_speed']
+        thrust_coefficients = data['power_thrust_table']['thrust_coefficient']
+    else:
+        thrust_coefficients = params['Ct']
+        # If it's a scalar value, just return that
+        if isinstance(thrust_coefficients, float) or isinstance(thrust_coefficients, int):
+            return thrust_coefficients
+        wind_speeds = params['WS']
+    return np.interp(Uinf, wind_speeds, thrust_coefficients, left=0.0, right=0.0)
+    
 
 def tanhADM(dx, y,z, Uinf, params):
     """
@@ -201,7 +227,7 @@ def tanhADM(dx, y,z, Uinf, params):
     yhh    = params['turby']
     Rdelta = params['Rdelta']
     turbR  = params['turbD']*0.5
-    Ct     = params['Ct']
+    Ct     = CtTableLookup(Uinf, params)
     r  = np.sqrt((y-yhh)**2 + (z-zhh)**2)
     F1 = 0.0                      # Force at infinity (should be zero)
     F0 = (0.5*Ct*Uinf**2)/dx      # Force on disk
