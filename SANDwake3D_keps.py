@@ -5,6 +5,14 @@ from collections import OrderedDict
 import numpy as np
 import SANDwake3D_base as sdb
 
+def calc_ghat(params):
+    """Calculate the gravitational acceleration vector 
+
+    Note: this currently enforces it so that it is always pointing in
+    the negative z direction
+
+    """
+    return np.array([0.0, 0.0, -np.abs(params["g"])])
 
 def rhs_f_nhalf(f_n, phi_tilde, dz_nut_tilde, dx, dz, params):
     """
@@ -87,16 +95,24 @@ def rhs_f_extra_forcing(field, phi, phi_n, aux_vars, params, x, dx, dy, dz):
     if field == "k":
         sigmak = params["sigmak"]
         fk_const = params["fk_const"] if "fk_const" in params else 0.0
+        # # ---- This is the old one from Marc HDF ----
+        # return (
+        #     sigmak
+        #     * phi["nut"]
+        #     * (
+        #         aux_vars["dy_u"] * aux_vars["dy_u"]
+        #         + aux_vars["dz_u"] * aux_vars["dz_u"]
+        #     )
+        #     - phi["eps"]
+        #     + fk_const
+        # )
         return (
-            sigmak
-            * phi["nut"]
-            * (
-                aux_vars["dy_u"] * aux_vars["dy_u"]
-                + aux_vars["dz_u"] * aux_vars["dz_u"]
-            )
+            aux_vars["Pk"]
             - phi["eps"]
+            + aux_vars["Gb"]
             + fk_const
         )
+
     if field == "eps":
         nu = params["nu"]
         sigmaeps = params["sigmaeps"]
@@ -105,16 +121,25 @@ def rhs_f_extra_forcing(field, phi, phi_n, aux_vars, params, x, dx, dy, dz):
         C3eps = params["C3eps"]
         feps_const = params["feps_const"] if "feps_const" in params else 0.0
         Tscale = time_scale(phi["k"], phi["eps"], nu)
+        # # ---- This is the old one from Marc HDF ----
+        # return (
+        #     C1eps
+        #     / Tscale
+        #     * (
+        #         sigmaeps * phi["nut"] * (aux_vars["dy_u"] * aux_vars["dy_u"])
+        #         + sigmaeps * phi["nut"] * (aux_vars["dz_u"] * aux_vars["dz_u"])
+        #     )
+        #     - C2eps * phi["eps"] / Tscale
+        #     + feps_const
+        # )
         return (
             C1eps
             / Tscale
-            * (
-                sigmaeps * phi["nut"] * (aux_vars["dy_u"] * aux_vars["dy_u"])
-                + sigmaeps * phi["nut"] * (aux_vars["dz_u"] * aux_vars["dz_u"])
-            )
+            * ( aux_vars["Pk"] + (1.0 - C3eps)*aux_vars["Gb"] )
             - C2eps * phi["eps"] / Tscale
             + feps_const
         )
+
     if field == "p":
         # du_j/dx_i du_i/dx_j = dx_U**2 + dy_V**2 + dz_W**2 + 2*(dx_V*dy_U + dx_W*dz_U + dy_W*dz_V)
         term1 = - (
@@ -160,7 +185,7 @@ def rhs_f_extra_forcing(field, phi, phi_n, aux_vars, params, x, dx, dy, dz):
         return -1.0/rho*aux_vars["dy_p"]
     if field in ( "w"):
         rho = 1.0  # REMINDER -- the rho's cancel out in the Poisson equation 
-        return -1.0/rho*aux_vars["dz_p"]
+        return -1.0/rho*aux_vars["dz_p"] + aux_vars["B_z"]
         
     # NOTE: This conditional down here needs to be generalized
     if field in ( "T"):
@@ -526,6 +551,24 @@ def advanceSystemKEPS(
         aux_vars["dy_T"], aux_vars["dz_T"] = np.gradient(
             phi_tilde["T"], dy, dz, edge_order=1
         )
+        # Compute the production term
+        aux_vars["Pk"] = ( 2.0*(
+                                 aux_vars["dx_u"]**2 +
+                                 aux_vars["dy_v"]**2 +
+                                 aux_vars["dz_w"]**2
+                                ) + 
+                           ( aux_vars["dy_u"] + aux_vars["dx_v"] )**2 +
+                           ( aux_vars["dz_v"] + aux_vars["dy_w"] )**2 +
+                           ( aux_vars["dz_u"] + aux_vars["dx_w"] )**2
+                           )
+        aux_vars["Pk"] *= phi_tilde["nut"]
+
+        # Compute the bouyancy TKE term
+        ghat = calc_ghat(params)
+        aux_vars["Gb"] = params["beta"]*ghat[2]*phi_tilde["nut"]/params["sigmaT"]*aux_vars["dz_T"]
+
+        # Compute the Boussinesq bouyancy TKE term
+        aux_vars["B_z"] = -ghat[2]*params["beta"]*(phi_tilde["T"]-params["Tref"])
 
         # Update the boundary conditions (if necessary)
         bcdebug={}
