@@ -6,13 +6,15 @@ import numpy as np
 import SANDwake3D_base as sdb
 
 
-def rhs_f_nhalf(f_n, phi_tilde, dz_nut_tilde, dx, dz, params):
+def rhs_f_nhalf(field, f_n, phi_tilde, dz_nut_tilde, dx, dz, params):
     """
     Go from n to n+1/2
     """
+    sigma = f"""sigma{field}"""
+
     u_tilde, w_tilde = phi_tilde["u"], phi_tilde["w"]
-    nu_total = params["nu"] + phi_tilde["nut"]
-    w_total = w_tilde - dz_nut_tilde
+    nu_total = params["nu"] + phi_tilde["nut"] / params[sigma]
+    w_total = w_tilde - dz_nut_tilde / params[sigma]
 
     inv_dx = 1.0 / dx
     inv_dz = 1.0 / dz
@@ -41,13 +43,15 @@ def rhs_f_nhalf(f_n, phi_tilde, dz_nut_tilde, dx, dz, params):
     return rhs
 
 
-def rhs_f_np1(f_nhalf, phi_tilde, dy_nut_tilde, dx, dy, params):
+def rhs_f_np1(field, f_nhalf, phi_tilde, dy_nut_tilde, dx, dy, params):
     """
     Go from n+1/2 to n+1 for the u-momentum equation
     """
+    sigma = f"""sigma{field}"""
+
     u_tilde, v_tilde = phi_tilde["u"], phi_tilde["v"]
-    nu_total = params["nu"] + phi_tilde["nut"]
-    v_total = v_tilde - dy_nut_tilde
+    nu_total = params["nu"] + phi_tilde["nut"] / params[sigma]
+    v_total = v_tilde - dy_nut_tilde / params[sigma]
 
     inv_half_dx = 2.0 / dx
     inv_dy = 1.0 / dy
@@ -85,11 +89,9 @@ def rhs_f_extra_forcing(field, phi, phi_n, aux_vars, params, x, dx, dy, dz):
     Compute the RHS extra forcing if necessary
     """
     if field == "k":
-        sigmak = params["sigmak"]
         fk_const = params["fk_const"] if "fk_const" in params else 0.0
         return (
-            sigmak
-            * phi["nut"]
+            phi["nut"]
             * (
                 aux_vars["dy_u"] * aux_vars["dy_u"]
                 + aux_vars["dz_u"] * aux_vars["dz_u"]
@@ -99,7 +101,6 @@ def rhs_f_extra_forcing(field, phi, phi_n, aux_vars, params, x, dx, dy, dz):
         )
     if field == "eps":
         nu = params["nu"]
-        sigmaeps = params["sigmaeps"]
         C1eps = params["C1eps"]
         C2eps = params["C2eps"]
         C3eps = params["C3eps"]
@@ -109,8 +110,9 @@ def rhs_f_extra_forcing(field, phi, phi_n, aux_vars, params, x, dx, dy, dz):
             C1eps
             / Tscale
             * (
-                sigmaeps * phi["nut"] * (aux_vars["dy_u"] * aux_vars["dy_u"])
-                + sigmaeps * phi["nut"] * (aux_vars["dz_u"] * aux_vars["dz_u"])
+                phi["nut"] * (aux_vars["dy_u"] * aux_vars["dy_u"])
+                + phi["nut"] * (aux_vars["dz_u"] * aux_vars["dz_u"])
+
             )
             - C2eps * phi["eps"] / Tscale
             + feps_const
@@ -179,6 +181,7 @@ def advanceF(field, phi_np1old, phi_n, phi_tilde, aux_vars, x, dx, dy, dz, param
 
     # Load parameters
     nu = params["nu"]
+    sigma = f"""sigma{field}"""
 
     # --- differentiation stencils ---
     #                  j-1  j  j+1
@@ -187,9 +190,9 @@ def advanceF(field, phi_np1old, phi_n, phi_tilde, aux_vars, x, dx, dy, dz, param
     d2cen = np.array([1, -2, 1])
     # -------------------------------
 
-    nu_total = nu + nut_tilde
-    v_total = v_tilde - aux_vars["dy_nut"]
-    w_total = w_tilde - aux_vars["dz_nut"]
+    nu_total = nu + nut_tilde  / params[sigma]
+    v_total = v_tilde - aux_vars["dy_nut"]  / params[sigma]
+    w_total = w_tilde - aux_vars["dz_nut"]  / params[sigma]
 
     rhs_extra_forcing = rhs_f_extra_forcing(field, phi_tilde, phi_n, aux_vars, params, x, dx, dy, dz)
 
@@ -197,7 +200,7 @@ def advanceF(field, phi_np1old, phi_n, phi_tilde, aux_vars, x, dx, dy, dz, param
     # -----------------------
     f_nhalf = np.zeros((ny, nz))
     rhs_nhalf = (
-        rhs_f_nhalf(phi_n[field], phi_tilde, aux_vars["dz_nut"], dx, dz, params)
+        rhs_f_nhalf(field, phi_n[field], phi_tilde, aux_vars["dz_nut"], dx, dz, params)
         + rhs_extra_forcing
     )
     inv_half_dx = 2.0 / dx
@@ -233,7 +236,7 @@ def advanceF(field, phi_np1old, phi_n, phi_tilde, aux_vars, x, dx, dy, dz, param
     # -----------------------
     f_np1 = np.zeros((ny, nz))
     rhs_np1 = (
-        rhs_f_np1(f_nhalf, phi_tilde, aux_vars["dy_nut"], dx, dy, params)
+        rhs_f_np1(field, f_nhalf, phi_tilde, aux_vars["dy_nut"], dx, dy, params)
         + rhs_extra_forcing
     )
     # == Set up the LHS matrices ==
@@ -461,6 +464,11 @@ def advanceSystemKEPS(
     phi_n1 = copy.deepcopy(phi_n)
 
     dxphi = lambda phin1, phin, v, invdx: (phin1[v] - phin[v])*invdx
+
+    # Add these sigmas so advanceF can treat everything the same
+    params['sigmau'] = 1.0
+    params['sigmav'] = 1.0
+    params['sigmaw'] = 1.0
     
     # Create a registry of which BC functions are used in this system
     BCfuncreg = {}
@@ -550,10 +558,6 @@ def advanceSystemKEPS(
             bcvar = updatedbcs[v] #allbcs[v]
 
             sigma = f"""sigma{v}"""
-            if sigma in params:
-                phi_tilde["nut"] /= params[sigma]
-                aux_vars["dy_nut"] /= params[sigma]
-                aux_vars["dz_nut"] /= params[sigma]
 
             phi_next[v] = eqnsys[v](
                 v,
@@ -568,11 +572,6 @@ def advanceSystemKEPS(
                 params,
                 bcvar,
             )
-
-            if sigma in params:
-                phi_tilde["nut"] *= params[sigma]
-                aux_vars["dy_nut"] *= params[sigma]
-                aux_vars["dz_nut"] *= params[sigma]
 
         # Test for convergence
         converged, convergedat = sdb.convergetest(phi_next, phi_n1, tol, testvars=convergevars)
