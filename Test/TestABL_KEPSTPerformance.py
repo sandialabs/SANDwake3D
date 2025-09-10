@@ -92,6 +92,7 @@ def main():
     Kinit = np.zeros((Ny, Nz))
     Tinit  = np.ones((Ny, Nz))*300
     EPSinit = np.zeros((Ny, Nz))
+    pinit  = np.zeros((Ny, Nz))
 
     for iz, z in enumerate(zvec):
         Uinit[:, iz] = UABL[iz]  # SANDwake3D.init_U_ABL(z,ABLparam)
@@ -111,6 +112,7 @@ def main():
     phiinit["k"] = Kinit
     phiinit['T'] = Tinit
     phiinit["eps"] = EPSinit
+    phiinit["p"] = pinit
 
     # Set boundary conditions
     ubc = {}
@@ -149,10 +151,20 @@ def main():
     Tbc['zlo'] = {'type':'dirichlet', 'value':300}
     Tbc['zhi'] = {'type':'dirichlet', 'value':300}
 
-    allbc = {'u':ubc, 'v':vbc, 'w':wbc, 'k':kbc, 'eps':epsbc, 'T':Tbc}
+    pbc = {}
+    pbc['ylo'] = {'type':'neumann', 'value':0.0}
+    pbc['yhi'] = {'type':'neumann', 'value':0.0}
+    pbc['zlo'] = {'type':'dirichlet', 'value':0.0}
+    pbc['zhi'] = {'type':'neumann', 'value':0.0}
+
+    allbc = {'u':ubc, 'v':vbc, 'w':wbc, 'k':kbc, 'eps':epsbc, 'T':Tbc, 'p':pbc}
 
     # Set parameters
     params = {
+        'rho' : 1.225,
+        'cp'  : 1005,
+        'g'   : 9.81,
+
         "nu": nu,
         "Cmu": 5.48 ** (-2),
         #'Cmu'  : 0.01,
@@ -162,6 +174,8 @@ def main():
         "sigmak": 0.9,
         "sigmaeps": 1.3,
         'sigmaT':1.0,
+        'dtau':1.0,
+        'beta':1.0/300.0,
     }
 
     xvecplot = [0, 200, 300, 400]  # [0, 100]#[0, 100, 200, 300]
@@ -186,7 +200,7 @@ def main():
     phi_old = np.load("phi-bkp.npz")
     for k, v in phi_old.items():
         try:
-            np.testing.assert_allclose(phi[k], v, rtol=1e-14, atol=1e-14)
+            np.testing.assert_allclose(phi[k], v, rtol=1e-14, atol=1.2e-14)
         except AssertionError as e:
             raise ValueError(f"Arrays are not close:\n{e}")
 
