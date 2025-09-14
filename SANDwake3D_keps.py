@@ -4,6 +4,7 @@ import copy
 from collections import OrderedDict
 import numpy as np
 import SANDwake3D_base as sdb
+from functools import partial
 
 def calc_ghat(params):
     """Calculate the gravitational acceleration vector 
@@ -120,7 +121,7 @@ def rhs_f_extra_forcing(field, phi, phi_n, aux_vars, params, x, dx, dy, dz):
         nu = params["nu"]
         C1eps = params["C1eps"]
         C2eps = params["C2eps"]
-        C3eps = params["C3eps"]
+        C3eps = params["C3eps_use"]
         feps_const = params["feps_const"] if "feps_const" in params else 0.0
         Tscale = time_scale(phi["k"], phi["eps"], nu)
         # # ---- This is the old one from Marc HDF ----
@@ -493,10 +494,13 @@ def advanceSystemKEPS(
     
     # Create a registry of which BC functions are used in this system
     BCfuncreg = {}
+    usewallmodel = False
     for v, bcgroup in allbcs.items():
         for face, bc in bcgroup.items():
             if (bc['type'] == 'bcfunc') and (bc['tag'] not in BCfuncreg):
                 BCfuncreg[bc['tag']] = bc['func']
+                if bc['func'] == MO_wallmodel:
+                    usewallmodel = True
 
     for k in range(maxiter):
         phi_next = OrderedDict()
@@ -576,8 +580,13 @@ def advanceSystemKEPS(
         aux_vars["Gb"] = params["beta"]*ghat[2]*phi_tilde["nut"]/params["sigmaT"]*aux_vars["dz_T"]
 
         # Compute the Boussinesq bouyancy TKE term
-        Tref = phi_n["T"]
-        aux_vars["B_z"] = -ghat[2]*params["beta"]*(phi_tilde["T"]-Tref)
+        if 'Tref_use' not in params:
+            params['Tref_use'] = phi_n['T'].copy()
+        if params['Tref'] is None:
+            Tref = params['Tref_use']
+        else:
+            Tref = params['Tref']
+        aux_vars["B_z"] = -ghat[2]*params["beta"]*(phi_tilde["T"] - Tref)
 
         # Update the boundary conditions (if necessary)
         bcdebug={}
@@ -593,6 +602,13 @@ def advanceSystemKEPS(
                 newbcvals = newbc
             for v, vbc in newbcvals.items():
                 updatedbcs[v].update(vbc)
+
+        # Calculate C3eps
+        if usewallmodel and params['C3eps'] is None:
+            params['C3eps_use'] = getCeps3(params['zlo']/params['Lnext'])
+        else:
+            params['C3eps_use'] = params['C3eps']
+        bcdebug['C3eps_use'] = params['C3eps_use']
 
         # Loop over all variables
         for v in varlist:
@@ -762,6 +778,17 @@ def set_k_init(rvec, dr, u, params, k_factor=0.1):
     k_init *= C
     return k_init
 
+def calcTref(xi, allphi, params):
+    lastN = 1     # Average over the last N steps
+    Tsol = allphi['T']
+    if xi < lastN:
+        Tslice = Tsol[0:(xi+1):,:,:]
+    else:
+        Tslice = Tsol[(xi-lastN+1):(xi+1),:,:] 
+    Tavg = np.mean(Tslice, axis=0)
+    params['Tref_use'] = Tavg 
+    return 
+
 ########################################################
 # Wall model stuff
 # 
@@ -852,7 +879,7 @@ def MO_wallmodel(phi, aux, param, dy, dz, debugout=False):
         return allbc
 
 ########################################################
-def getTypicalWMBC(Uinf, TBC, uBC_y=None, veerBC=None, dTdz=None):
+def getTypicalWMBC(Uinf, TBC, uBC_y=None, veerBC=None, dTdz=None, kinf=None):
     """
     Define the "typical" wall-model boundary conditions
     """
@@ -880,7 +907,16 @@ def getTypicalWMBC(Uinf, TBC, uBC_y=None, veerBC=None, dTdz=None):
         T_zhi = TBC
     else:
         T_zhi = TBC[-1]
-    
+
+
+    # Defined on the zhi k BC
+    if kinf is None:
+        ktype = 'neumann'
+        kval  = 0.0
+    else:
+        ktype = 'dirichlet'
+        kval  = kinf
+        
     ubc = {}
     ubc['ylo'] = {'type':utype,     'value':uval}
     ubc['yhi'] = {'type':utype,     'value':uval}
@@ -908,7 +944,8 @@ def getTypicalWMBC(Uinf, TBC, uBC_y=None, veerBC=None, dTdz=None):
     kbc['yhi'] = {'type':'neumann', 'value':0.0}
     kbc['zlo'] = {'type':'bcfunc',  'value':None,
                   'tag':'ZLO_WALLBC',  'func':MO_wallmodel}
-    kbc['zhi'] = {'type':'neumann', 'value':0.0}
+    #kbc['zhi'] = {'type':'neumann', 'value':0.0}
+    kbc['zhi'] = {'type':ktype, 'value':kval}
 
     epsbc = {}
     epsbc['ylo'] = {'type':'neumann', 'value':0.0}
@@ -948,6 +985,31 @@ def getUVfromUhVeer(Uh, veer, format='deg'):
         V[i] = Uh[i]*np.sin(veer[i]*np.pi/180.0)
     return U, V
 
+def getCeps3(zL):
+    """
+    See table 1 and equation 24 from Alinot and Masson
+    """
+    Ce3 = {}
+    Ce3[-1] = {}
+    Ce3[1]  = {}
+
+    zLdivide = {1:0.33, -1:-0.25}
+
+    # L > 0, z/L < 0.33
+    Ce3[1][-1]  = [4.181,   33.994,  -442.398,  2368.12, -6043.544,  5970.776]
+    Ce3[1][1]   = [5.225,   -5.269,   5.115,   -2.406,    0.435,     0.000]
+    Ce3[-1][-1] = [-0.0609, -33.672, -546.880, -3234.06, -9490.792, -11163.202]
+    Ce3[-1][1]  = [1.765,   17.1346,  19.165,   11.912,   3.821,     0.492]
+
+    zLsign = -1 if zL<0.0 else 1
+    zLmag  = -1 if zL < zLdivide[zLsign] else 1
+
+    a = Ce3[zLsign][zLmag]
+    Ceps3 = 0.0
+    for n in range(6):
+        Ceps3 += a[n]*(zL**n) 
+    return Ceps3
+
 ########################################################
 # Define the keps equation system
 keps_eqns = OrderedDict()
@@ -968,6 +1030,6 @@ kepsT_eqns["v"] = advanceF #advanceMass
 kepsT_eqns["p"] = advanceP
 
 # Use the same marchSystemBase in SANDWake3D_base to advance the equations
-marchSystem = sdb.marchSystemBase
+marchSystem = partial(sdb.marchSystemBase, postadvfunc=calcTref)
 
 
