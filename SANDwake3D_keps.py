@@ -99,17 +99,6 @@ def rhs_f_extra_forcing(field, phi, phi_n, aux_vars, params, x, dx, dy, dz):
     """
     if field == "k":
         fk_const = params["fk_const"] if "fk_const" in params else 0.0
-        # # ---- This is the old one from Marc HDF ----
-        # return (
-        #     sigmak
-        #     * phi["nut"]
-        #     * (
-        #         aux_vars["dy_u"] * aux_vars["dy_u"]
-        #         + aux_vars["dz_u"] * aux_vars["dz_u"]
-        #     )
-        #     - phi["eps"]
-        #     + fk_const
-        # )
         return (
             aux_vars["Pk"]
             - phi["eps"]
@@ -124,17 +113,6 @@ def rhs_f_extra_forcing(field, phi, phi_n, aux_vars, params, x, dx, dy, dz):
         C3eps = params["C3eps_use"]
         feps_const = params["feps_const"] if "feps_const" in params else 0.0
         Tscale = time_scale(phi["k"], phi["eps"], nu)
-        # # ---- This is the old one from Marc HDF ----
-        # return (
-        #     C1eps
-        #     / Tscale
-        #     * (
-        #         sigmaeps * phi["nut"] * (aux_vars["dy_u"] * aux_vars["dy_u"])
-        #         + sigmaeps * phi["nut"] * (aux_vars["dz_u"] * aux_vars["dz_u"])
-        #     )
-        #     - C2eps * phi["eps"] / Tscale
-        #     + feps_const
-        # )
         return (
             C1eps
             / Tscale
@@ -144,7 +122,6 @@ def rhs_f_extra_forcing(field, phi, phi_n, aux_vars, params, x, dx, dy, dz):
         )
 
     if field == "p":
-        # du_j/dx_i du_i/dx_j = dx_U**2 + dy_V**2 + dz_W**2 + 2*(dx_V*dy_U + dx_W*dz_U + dy_W*dz_V)
         term1 = - (
                    aux_vars["dx_u"]**2 + aux_vars["dy_v"]**2 + aux_vars["dz_w"]**2
                   ) - 2.0*(  aux_vars["dx_v"]*aux_vars["dy_u"]
@@ -927,8 +904,6 @@ def getTypicalWMBC(Uinf, TBC, uBC_y=None, veerBC=None, dTdz=None, kinf=None):
     vbc = {}
     vbc['ylo'] = {'type':vtype,      'value':veerV}
     vbc['yhi'] = {'type':vtype,      'value':veerV}
-    #vbc['ylo'] = {'type':'neumann', 'value':0.0}
-    #vbc['yhi'] = {'type':'neumann', 'value':0.0}
     vbc['zlo'] = {'type':'bcfunc',    'value':None,
                   'tag':'ZLO_WALLBC',  'func':MO_wallmodel}  
     vbc['zhi'] = {'type':'dirichlet', 'value':v_zhi}
