@@ -4,7 +4,16 @@ import copy
 from collections import OrderedDict
 import numpy as np
 import SANDwake3D_base as sdb
+from functools import partial
 
+def calc_ghat(params):
+    """Calculate the gravitational acceleration vector 
+
+    Note: this currently enforces it so that it is always pointing in
+    the negative z direction
+
+    """
+    return np.array([0.0, 0.0, -np.abs(params["g"])])
 
 def rhs_f_nhalf(field, f_n, phi_tilde, dz_nut_tilde, dx, dz, params):
     """
@@ -91,34 +100,28 @@ def rhs_f_extra_forcing(field, phi, phi_n, aux_vars, params, x, dx, dy, dz):
     if field == "k":
         fk_const = params["fk_const"] if "fk_const" in params else 0.0
         return (
-            phi["nut"]
-            * (
-                aux_vars["dy_u"] * aux_vars["dy_u"]
-                + aux_vars["dz_u"] * aux_vars["dz_u"]
-            )
+            aux_vars["Pk"]
             - phi["eps"]
+            + aux_vars["Gb"]
             + fk_const
         )
+
     if field == "eps":
         nu = params["nu"]
         C1eps = params["C1eps"]
         C2eps = params["C2eps"]
-        C3eps = params["C3eps"]
+        C3eps = params["C3eps_use"]
         feps_const = params["feps_const"] if "feps_const" in params else 0.0
         Tscale = time_scale(phi["k"], phi["eps"], nu)
         return (
             C1eps
             / Tscale
-            * (
-                phi["nut"] * (aux_vars["dy_u"] * aux_vars["dy_u"])
-                + phi["nut"] * (aux_vars["dz_u"] * aux_vars["dz_u"])
-
-            )
+            * ( aux_vars["Pk"] + (1.0 - C3eps)*aux_vars["Gb"] )
             - C2eps * phi["eps"] / Tscale
             + feps_const
         )
+
     if field == "p":
-        # du_j/dx_i du_i/dx_j = dx_U**2 + dy_V**2 + dz_W**2 + 2*(dx_V*dy_U + dx_W*dz_U + dy_W*dz_V)
         term1 = - (
                    aux_vars["dx_u"]**2 + aux_vars["dy_v"]**2 + aux_vars["dz_w"]**2
                   ) - 2.0*(  aux_vars["dx_v"]*aux_vars["dy_u"]
@@ -148,13 +151,13 @@ def rhs_f_extra_forcing(field, phi, phi_n, aux_vars, params, x, dx, dy, dz):
         xturb    = turbdict['turbx']
         rho      = 1.0  # REMINDER -- the rho's cancel out in the Poisson equation 
         fx       = -1.0/rho*aux_vars["dx_p"]
-        if np.abs(xturb-x)< (dx-1.0E-3):
+        if np.abs(xturb-x)< (0.5*dx-1.0E-3):
             zhh  = turbdict['zhh']
             yhh  = turbdict['turby']
             R    = turbdict['turbD']*0.5
             Uinf = sdb.rotorAvgUh(ym, zm, phi_n['u'], phi_n['v'], yhh, zhh, R)
             turbADfunc = turbdict['turbfunc']
-            fx +=  turbADfunc(dx, ym, zm, Uinf, turbdict)
+            fx +=  turbADfunc(dx, ym, zm, Uinf, phi_n, turbdict)
         return fx
 
     if field in ( "v"):
@@ -162,7 +165,7 @@ def rhs_f_extra_forcing(field, phi, phi_n, aux_vars, params, x, dx, dy, dz):
         return -1.0/rho*aux_vars["dy_p"]
     if field in ( "w"):
         rho = 1.0  # REMINDER -- the rho's cancel out in the Poisson equation 
-        return -1.0/rho*aux_vars["dz_p"]
+        return -1.0/rho*aux_vars["dz_p"] + aux_vars["B_z"]
         
     # NOTE: This conditional down here needs to be generalized
     if field in ( "T"):
@@ -433,7 +436,7 @@ def time_scale(k, eps, nu):
     """
     Compute time scale
     """
-    return np.fmax(k / eps, 6.0 * np.sqrt(nu / eps))
+    return np.fmax(k / eps, 6.0 * np.sqrt(nu / np.abs(eps)))
 
 
 def get_nut(phi, cmu, nu):
@@ -468,10 +471,13 @@ def advanceSystemKEPS(
     
     # Create a registry of which BC functions are used in this system
     BCfuncreg = {}
+    usewallmodel = False
     for v, bcgroup in allbcs.items():
         for face, bc in bcgroup.items():
             if (bc['type'] == 'bcfunc') and (bc['tag'] not in BCfuncreg):
                 BCfuncreg[bc['tag']] = bc['func']
+                if bc['func'] == MO_wallmodel:
+                    usewallmodel = True
 
     for k in range(maxiter):
         phi_next = OrderedDict()
@@ -534,6 +540,30 @@ def advanceSystemKEPS(
         aux_vars["dy_T"], aux_vars["dz_T"] = np.gradient(
             phi_tilde["T"], dy, dz, edge_order=1
         )
+        # Compute the production term
+        aux_vars["Pk"] = ( 2.0*(
+                                 aux_vars["dx_u"]**2 +
+                                 aux_vars["dy_v"]**2 +
+                                 aux_vars["dz_w"]**2
+                                ) + 
+                           ( aux_vars["dy_u"] + aux_vars["dx_v"] )**2 +
+                           ( aux_vars["dz_v"] + aux_vars["dy_w"] )**2 +
+                           ( aux_vars["dz_u"] + aux_vars["dx_w"] )**2
+                           )
+        aux_vars["Pk"] *= phi_tilde["nut"]
+
+        # Compute the bouyancy TKE term
+        ghat = calc_ghat(params)
+        aux_vars["Gb"] = params["beta"]*ghat[2]*phi_tilde["nut"]/params["sigmaT"]*aux_vars["dz_T"]
+
+        # Compute the Boussinesq bouyancy TKE term
+        if 'Tref_use' not in params:
+            params['Tref_use'] = phi_n['T'].copy()
+        if params['Tref'] is None:
+            Tref = params['Tref_use']
+        else:
+            Tref = params['Tref']
+        aux_vars["B_z"] = -ghat[2]*params["beta"]*(phi_tilde["T"] - Tref)
 
         # Update the boundary conditions (if necessary)
         bcdebug={}
@@ -549,6 +579,13 @@ def advanceSystemKEPS(
                 newbcvals = newbc
             for v, vbc in newbcvals.items():
                 updatedbcs[v].update(vbc)
+
+        # Calculate C3eps
+        if usewallmodel and params['C3eps'] is None:
+            params['C3eps_use'] = getCeps3(params['zlo']/params['Lnext'])
+        else:
+            params['C3eps_use'] = params['C3eps']
+        bcdebug['C3eps_use'] = params['C3eps_use']
 
         # Loop over all variables
         for v in varlist:
@@ -573,7 +610,7 @@ def advanceSystemKEPS(
         # Test for convergence
         converged, convergedat = sdb.convergetest(phi_next, phi_n1, tol, testvars=convergevars)
         phi_n1 = copy.deepcopy(phi_next)
-        if verbose:
+        if verbose>1:
             print(f"[{k}] "+ ", ".join(f"{k}: {v:0.4e}" for k, v in convergedat.items()))
         if converged:
             break
@@ -587,6 +624,9 @@ def advanceSystemKEPS(
 
     # Check if k hit maxiter:
     # -->TODO!
+    if (k==maxiter-1):
+        print('WARNING: CONVERGENCE FAILED: ')
+        print(f"[{k}] "+ ", ".join(f"{k}: {v:0.4e}" for k, v in convergedat.items()))
     return phi_n1
 
 
@@ -715,6 +755,17 @@ def set_k_init(rvec, dr, u, params, k_factor=0.1):
     k_init *= C
     return k_init
 
+def calcTref(xi, allphi, params):
+    lastN = 1     # Average over the last N steps
+    Tsol = allphi['T']
+    if xi < lastN:
+        Tslice = Tsol[0:(xi+1):,:,:]
+    else:
+        Tslice = Tsol[(xi-lastN+1):(xi+1),:,:] 
+    Tavg = np.mean(Tslice, axis=0)
+    params['Tref_use'] = Tavg 
+    return 
+
 ########################################################
 # Wall model stuff
 # 
@@ -792,11 +843,12 @@ def MO_wallmodel(phi, aux, param, dy, dz, debugout=False):
         # Calculate the next L value
         invTstar = np.array([1/x if np.abs(x)>0 else float('inf') for x in Tstar ])
         Lnext = (ustar**2)*Tw/(K*g)*invTstar  # Eq. 12 in Alinot & Masson
+
         # TODO: generalize to use vector valued L in the future
         param['Lnext'] = np.mean(Lnext)
         
         debugoutput['Lnext'] = np.mean(Lnext)
-
+        debugoutput['Tstar'] = np.mean(Tstar)
     
     if debugout:
         return allbc, debugoutput
@@ -804,16 +856,26 @@ def MO_wallmodel(phi, aux, param, dy, dz, debugout=False):
         return allbc
 
 ########################################################
-def getTypicalWMBC(Uinf, TBC, veerBC=None):
+def getTypicalWMBC(Uinf, TBC, uBC_y=None, veerBC=None, dTdz=None, kinf=None):
     """
     Define the "typical" wall-model boundary conditions
     """
 
     # Decide on the type of BC for V
+    if uBC_y is None:
+        utype = 'neumann'
+        uval  = 0.0
+    else:
+        utype = 'dirichlet'
+        uval  = uBC_y
+
+    # Decide on the type of BC for V
     if veerBC is None:
+        vtype = 'neumann'
         veerV = 0.0
         v_zhi = 0.0
     else:
+        vtype = 'dirichlet'
         veerV = veerBC
         v_zhi = veerV[-1]
 
@@ -822,24 +884,33 @@ def getTypicalWMBC(Uinf, TBC, veerBC=None):
         T_zhi = TBC
     else:
         T_zhi = TBC[-1]
-    
+
+
+    # Defined on the zhi k BC
+    if kinf is None:
+        ktype = 'neumann'
+        kval  = 0.0
+    else:
+        ktype = 'dirichlet'
+        kval  = kinf
+        
     ubc = {}
-    ubc['ylo'] = {'type':'neumann', 'value':0.0}
-    ubc['yhi'] = {'type':'neumann', 'value':0.0}
+    ubc['ylo'] = {'type':utype,     'value':uval}
+    ubc['yhi'] = {'type':utype,     'value':uval}
     ubc['zlo'] = {'type':'bcfunc',  'value':None,
                   'tag':'ZLO_WALLBC',  'func':MO_wallmodel}
     ubc['zhi'] = {'type':'dirichlet', 'value':Uinf}
 
     vbc = {}
-    vbc['ylo'] = {'type':'dirichlet', 'value':veerV}
-    vbc['yhi'] = {'type':'dirichlet', 'value':veerV}
+    vbc['ylo'] = {'type':vtype,      'value':veerV}
+    vbc['yhi'] = {'type':vtype,      'value':veerV}
     vbc['zlo'] = {'type':'bcfunc',    'value':None,
                   'tag':'ZLO_WALLBC',  'func':MO_wallmodel}  
     vbc['zhi'] = {'type':'dirichlet', 'value':v_zhi}
 
     wbc = {}
-    wbc['ylo'] = {'type':'neumann', 'value':0.0}
-    wbc['yhi'] = {'type':'neumann', 'value':0.0}
+    wbc['ylo'] = {'type':'dirichlet', 'value':0.0}
+    wbc['yhi'] = {'type':'dirichlet', 'value':0.0}
     wbc['zlo'] = {'type':'dirichlet', 'value':0.0}
     wbc['zhi'] = {'type':'neumann', 'value':0.0}
 
@@ -848,7 +919,8 @@ def getTypicalWMBC(Uinf, TBC, veerBC=None):
     kbc['yhi'] = {'type':'neumann', 'value':0.0}
     kbc['zlo'] = {'type':'bcfunc',  'value':None,
                   'tag':'ZLO_WALLBC',  'func':MO_wallmodel}
-    kbc['zhi'] = {'type':'neumann', 'value':0.0}
+    #kbc['zhi'] = {'type':'neumann', 'value':0.0}
+    kbc['zhi'] = {'type':ktype, 'value':kval}
 
     epsbc = {}
     epsbc['ylo'] = {'type':'neumann', 'value':0.0}
@@ -862,7 +934,10 @@ def getTypicalWMBC(Uinf, TBC, veerBC=None):
     Tbc['yhi'] = {'type':'dirichlet', 'value':TBC}
     Tbc['zlo'] = {'type':'bcfunc',    'value':None,
                   'tag':'ZLO_WALLBC',  'func':MO_wallmodel}
-    Tbc['zhi'] = {'type':'dirichlet', 'value':T_zhi}
+    if dTdz is None:
+        Tbc['zhi'] = {'type':'dirichlet', 'value':T_zhi}
+    else:
+        Tbc['zhi'] = {'type':'neumann', 'value':dTdz}
 
     pbc = {}
     pbc['ylo'] = {'type':'neumann', 'value':0.0}
@@ -872,6 +947,43 @@ def getTypicalWMBC(Uinf, TBC, veerBC=None):
 
     allbc = {'u':ubc, 'v':vbc, 'w':wbc, 'k':kbc, 'eps':epsbc, 'T':Tbc, 'p':pbc}
     return allbc
+
+def getUVfromUhVeer(Uh, veer, format='deg'):
+    """
+    Calculate the U, V velocity profiles from the Uh and veer profile
+    """
+    Nz = len(Uh)
+    U  = np.zeros(Nz)
+    V  = np.zeros(Nz)
+    for i in range(Nz):
+        U[i] = Uh[i]*np.cos(veer[i]*np.pi/180.0)
+        V[i] = Uh[i]*np.sin(veer[i]*np.pi/180.0)
+    return U, V
+
+def getCeps3(zL):
+    """
+    See table 1 and equation 24 from Alinot and Masson
+    """
+    Ce3 = {}
+    Ce3[-1] = {}
+    Ce3[1]  = {}
+
+    zLdivide = {1:0.33, -1:-0.25}
+
+    # L > 0, z/L < 0.33
+    Ce3[1][-1]  = [4.181,   33.994,  -442.398,  2368.12, -6043.544,  5970.776]
+    Ce3[1][1]   = [5.225,   -5.269,   5.115,   -2.406,    0.435,     0.000]
+    Ce3[-1][-1] = [-0.0609, -33.672, -546.880, -3234.06, -9490.792, -11163.202]
+    Ce3[-1][1]  = [1.765,   17.1346,  19.165,   11.912,   3.821,     0.492]
+
+    zLsign = -1 if zL<0.0 else 1
+    zLmag  = -1 if zL < zLdivide[zLsign] else 1
+
+    a = Ce3[zLsign][zLmag]
+    Ceps3 = 0.0
+    for n in range(6):
+        Ceps3 += a[n]*(zL**n) 
+    return Ceps3
 
 ########################################################
 # Define the keps equation system
@@ -893,6 +1005,6 @@ kepsT_eqns["v"] = advanceF #advanceMass
 kepsT_eqns["p"] = advanceP
 
 # Use the same marchSystemBase in SANDWake3D_base to advance the equations
-marchSystem = sdb.marchSystemBase
+marchSystem = partial(sdb.marchSystemBase, postadvfunc=calcTref)
 
 

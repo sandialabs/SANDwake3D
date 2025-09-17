@@ -146,7 +146,8 @@ def advanceSystem(phi_n, x, dx, dy, dz, params, allbcs, eqnsys, maxiter=100,
     return phi_n1
 
 def marchSystemBase(phi_init, xvec, dy, dz, params, allbcs, eqnsys,
-                    advanceSys=advanceSystem, maxiter=100, tol=1.0E-6, verbose=False):
+                    advanceSys=advanceSystem, maxiter=100, tol=1.0E-6, verbose=False,
+                    postadvfunc=None):
     """
     March the system in x according xvec
     """
@@ -178,6 +179,8 @@ def marchSystemBase(phi_init, xvec, dy, dz, params, allbcs, eqnsys,
             phi[v][xi+1,:,:] = phinext[v]
         phiprev = phinext.copy()
         xprev = x
+        if postadvfunc is not None:
+            postadvfunc(xi+1, phi, params)
     return phi
 
 ############################################
@@ -219,7 +222,7 @@ def CtTableLookup(Uinf, params):
     return np.interp(Uinf, wind_speeds, thrust_coefficients, left=0.0, right=0.0)
     
 
-def tanhADM(dx, y,z, Uinf, params):
+def tanhADM(dx, y,z, Uinf, phi, params):
     """
     A uniformly loaded actuator disk
     """
@@ -229,7 +232,8 @@ def tanhADM(dx, y,z, Uinf, params):
     turbR  = params['turbD']*0.5
     Ct     = CtTableLookup(Uinf, params)
     r  = np.sqrt((y-yhh)**2 + (z-zhh)**2)
+    Ulocal = np.sqrt(phi['u']**2 + phi['v']**2)
     F1 = 0.0                      # Force at infinity (should be zero)
-    F0 = (0.5*Ct*Uinf**2)/dx      # Force on disk
+    F0 = (0.5*Ct*Ulocal**2)/dx      # Force on disk
     Fr = 0.5*(F1-F0)*(1.0 + np.tanh((r-turbR)/Rdelta)) + F0
     return -Fr 
