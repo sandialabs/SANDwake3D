@@ -193,7 +193,7 @@ def computeTurbineForces(x, dx, ym, zm, phi_n, tparams, verbose=0):
     """
     Compute turbine model forces from a list of turbines
     """
-    debugout = {}  # Any turbine debugging output goes here
+    turbout = []  # Any turbine output goes here
     eps = 1.0E-5
     fx = np.zeros_like(phi_n['u'])
     fy = np.zeros_like(phi_n['u'])
@@ -207,10 +207,8 @@ def computeTurbineForces(x, dx, ym, zm, phi_n, tparams, verbose=0):
             yhh  = turbdict['turby']
             R    = turbdict['turbD']*0.5
             Uinf = rotorAvgUh(ym, zm, phi_n['u'], phi_n['v'], yhh, zhh, R)
-            # Compute the power
-            turbdict['power'] = 0.0    # --> TO-DO!
-
-            # Compute the forces
+            
+            # Compute the turbine forces and performance
             if verbose: print(f'Computing forces for turbine {name}')
             turbADfunc = turbdict['turbfunc']
             if inspect.isfunction(turbADfunc):
@@ -219,13 +217,13 @@ def computeTurbineForces(x, dx, ym, zm, phi_n, tparams, verbose=0):
                 modname  = turbADfunc.split('.')[0]
                 funcname = turbADfunc.split('.')[1]
                 func     = getattr(sys.modules[modname], funcname)
-            fdict = func(dx, ym, zm, Uinf, phi_n, turbdict)
+            fdict, tout = func(dx, ym, zm, Uinf, phi_n, turbdict)
 
             fx += fdict['u']
             fy += fdict['v']
             fz += fdict['w']
-
-    return {'u':fx, 'v':fy, 'w':fz}, debugout
+            turbout.append(tout)
+    return {'u':fx, 'v':fy, 'w':fz}, turbout
 
 def rotorAvgUh(ym, zm, u, v, yhh, zhh, R):
     """
@@ -260,7 +258,15 @@ def CtTableLookup(Uinf, params):
             return thrust_coefficients
         wind_speeds = params['WS']
     return np.interp(Uinf, wind_speeds, thrust_coefficients, left=0.0, right=0.0)
-    
+
+def PowerTableLookup(Uinf, params):
+    powertable = params['power']+0.0
+    # If it's a scalar value, just return that
+    if isinstance(powertable, float) or isinstance(powertable, int):
+        return powertable
+    wind_speeds = params['WS']
+    return np.interp(Uinf, wind_speeds, powertable, left=0.0, right=0.0)   
+
 
 def tanhADM(dx, y,z, Uinf, phi, params):
     """
@@ -288,6 +294,7 @@ def UnifCtADM(dx, y,z, Uinf, phi, params):
     turbR  = params['turbD']*0.5
     turbnormal = params['turbnormal'] if 'turbnormal' in params else [-1.0, 0.0, 0.0]
     Ct     = CtTableLookup(Uinf, params)
+    power  = PowerTableLookup(Uinf, params)
     r      = np.sqrt((y-yhh)**2 + (z-zhh)**2)
     Ulocal = np.sqrt(phi['u']**2 + phi['v']**2)
     Fdisk  = (0.5*Ct*Ulocal**2)/dx      # Force on disk
@@ -295,5 +302,7 @@ def UnifCtADM(dx, y,z, Uinf, phi, params):
     Fx     = turbnormal[0]*Faxial
     Fy     = turbnormal[1]*Faxial
     Fz     = turbnormal[2]*Faxial
-    return {'u':Fx, 'v':Fy, 'w':Fz}
+    forces = {'u':Fx, 'v':Fy, 'w':Fz}
+    turbdat= {'name':params['name'],'Ct':Ct, 'power':power}
+    return forces, turbdat
 

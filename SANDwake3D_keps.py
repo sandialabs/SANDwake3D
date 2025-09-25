@@ -491,14 +491,14 @@ def advanceSystemKEPS(
 
     # Compute turbine forces if necessary
     fturbines  = {}
-    turbdebug  = {}
+    turboutput = None
     if 'turbinelist' in params:
         turbparams = params['turbinelist']
         ym         = params['ym']
         zm         = params['zm']
-        fturbines, turbdebug  = sdb.computeTurbineForces(x, dx, ym, zm,
-                                                         phi_n, turbparams,
-                                                         verbose=verbose)
+        fturbines, turboutput  = sdb.computeTurbineForces(x, dx, ym, zm,
+                                                          phi_n, turbparams,
+                                                          verbose=verbose)
         
     # Loop until converged
     for k in range(maxiter):
@@ -644,6 +644,9 @@ def advanceSystemKEPS(
         bcdebug['avg_dil'] = np.linalg.norm(dil)/dil.size
         for tag, debugout in bcdebug.items():
             print(tag+': '+repr(debugout))
+        if turboutput is not None:
+            for turbinfo in turboutput:
+                print(turbinfo)
 
     # Check if k hit maxiter:
     # -->TODO!
