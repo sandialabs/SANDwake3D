@@ -93,7 +93,8 @@ def rhs_f_np1(field, f_nhalf, phi_tilde, dy_nut_tilde, dx, dy, params):
     return rhs
 
 
-def rhs_f_extra_forcing(field, phi, phi_n, aux_vars, params, x, dx, dy, dz):
+def rhs_f_extra_forcing(field, phi, phi_n, aux_vars, params, x, dx, dy, dz,
+                        fturbines={}):
     """
     Compute the RHS extra forcing if necessary
     """
@@ -144,28 +145,34 @@ def rhs_f_extra_forcing(field, phi, phi_n, aux_vars, params, x, dx, dy, dz):
         beta = params['beta']
         termT  = g*beta*aux_vars["dz_T"]
         return term1 + term2 + term3 + term4 + termT
-    if (field in ("u")) and 'turbforcing' in params:
-        ym       = params['ym']
-        zm       = params['zm']
-        turbdict = params['turbforcing']
-        xturb    = turbdict['turbx']
-        rho      = 1.0  # REMINDER -- the rho's cancel out in the Poisson equation 
-        fx       = -1.0/rho*aux_vars["dx_p"]
-        if np.abs(xturb-x)< (0.5*dx-1.0E-3):
-            zhh  = turbdict['zhh']
-            yhh  = turbdict['turby']
-            R    = turbdict['turbD']*0.5
-            Uinf = sdb.rotorAvgUh(ym, zm, phi_n['u'], phi_n['v'], yhh, zhh, R)
-            turbADfunc = turbdict['turbfunc']
-            fx +=  turbADfunc(dx, ym, zm, Uinf, phi_n, turbdict)
+    if field in ("u"):
+        rho      = 1.0  # REMINDER -- the rho's cancel out in the Poisson equation
+        fturb    = fturbines['u'] if 'u' in fturbines else 0.0
+        fx       = -1.0/rho*aux_vars["dx_p"] + fturb
+
+        # This will be obsoleted soon!!
+        if 'turbforcing' in params:
+            ym       = params['ym']
+            zm       = params['zm']
+            turbdict = params['turbforcing']
+            xturb    = turbdict['turbx']
+            if np.abs(xturb-x)< (0.5*dx-1.0E-3):
+                zhh  = turbdict['zhh']
+                yhh  = turbdict['turby']
+                R    = turbdict['turbD']*0.5
+                Uinf = sdb.rotorAvgUh(ym, zm, phi_n['u'], phi_n['v'], yhh, zhh, R)
+                turbADfunc = turbdict['turbfunc']
+                fx +=  turbADfunc(dx, ym, zm, Uinf, phi_n, turbdict)
         return fx
 
     if field in ( "v"):
+        fturb    = fturbines['v'] if 'v' in fturbines else 0.0
         rho = 1.0  # REMINDER -- the rho's cancel out in the Poisson equation 
-        return -1.0/rho*aux_vars["dy_p"]
+        return -1.0/rho*aux_vars["dy_p"] + fturb
     if field in ( "w"):
+        fturb    = fturbines['w'] if 'w' in fturbines else 0.0
         rho = 1.0  # REMINDER -- the rho's cancel out in the Poisson equation 
-        return -1.0/rho*aux_vars["dz_p"] + aux_vars["B_z"]
+        return -1.0/rho*aux_vars["dz_p"] + aux_vars["B_z"] + fturb
         
     # NOTE: This conditional down here needs to be generalized
     if field in ( "T"):
@@ -174,7 +181,9 @@ def rhs_f_extra_forcing(field, phi, phi_n, aux_vars, params, x, dx, dy, dz):
     return 0
 
 
-def advanceF(field, phi_np1old, phi_n, phi_tilde, aux_vars, x, dx, dy, dz, params, bcvar):
+def advanceF(field, phi_np1old, phi_n, phi_tilde, aux_vars, x, dx, dy, dz,
+             params, bcvar,
+             fturbines={}):
     """
     Advance the field one full step
     """
@@ -197,7 +206,7 @@ def advanceF(field, phi_np1old, phi_n, phi_tilde, aux_vars, x, dx, dy, dz, param
     v_total = v_tilde - aux_vars["dy_nut"]  / params[sigma]
     w_total = w_tilde - aux_vars["dz_nut"]  / params[sigma]
 
-    rhs_extra_forcing = rhs_f_extra_forcing(field, phi_tilde, phi_n, aux_vars, params, x, dx, dy, dz)
+    rhs_extra_forcing = rhs_f_extra_forcing(field, phi_tilde, phi_n, aux_vars, params, x, dx, dy, dz, fturbines)
 
     # First sweep: n -> n+1/2
     # -----------------------
@@ -343,6 +352,7 @@ def advanceP(
     dz,
     params,
     bcvar,
+    fturbines={},
 ):
     """
     Advance the pressure Poisson equation one full step (in artificial time!)
@@ -479,6 +489,18 @@ def advanceSystemKEPS(
                 if bc['func'] == MO_wallmodel:
                     usewallmodel = True
 
+    # Compute turbine forces if necessary
+    fturbines  = {}
+    turboutput = None
+    if 'turbinelist' in params:
+        turbparams = params['turbinelist']
+        ym         = params['ym']
+        zm         = params['zm']
+        fturbines, turboutput  = sdb.computeTurbineForces(x, dx, ym, zm,
+                                                          phi_n, turbparams,
+                                                          verbose=verbose)
+        
+    # Loop until converged
     for k in range(maxiter):
         phi_next = OrderedDict()
         phi_n1["nut"] = get_nut(phi_n1, params["Cmu"], params["nu"])
@@ -559,7 +581,7 @@ def advanceSystemKEPS(
         # Compute the Boussinesq bouyancy TKE term
         if 'Tref_use' not in params:
             params['Tref_use'] = phi_n['T'].copy()
-        if params['Tref'] is None:
+        if ('Tref' not in params) or (params['Tref'] is None):
             Tref = params['Tref_use']
         else:
             Tref = params['Tref']
@@ -605,6 +627,7 @@ def advanceSystemKEPS(
                 dz,
                 params,
                 bcvar,
+                fturbines=fturbines,
             )
 
         # Test for convergence
@@ -621,6 +644,9 @@ def advanceSystemKEPS(
         bcdebug['avg_dil'] = np.linalg.norm(dil)/dil.size
         for tag, debugout in bcdebug.items():
             print(tag+': '+repr(debugout))
+        if turboutput is not None:
+            for turbinfo in turboutput:
+                print(turbinfo)
 
     # Check if k hit maxiter:
     # -->TODO!

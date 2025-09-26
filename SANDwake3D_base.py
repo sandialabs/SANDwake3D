@@ -5,6 +5,8 @@ from scipy.linalg.lapack import dgbsv
 import copy
 from collections import OrderedDict
 import yaml
+import inspect
+import sys
 
 def solvetridiag(matrow, b, verbose=False):
     """
@@ -187,6 +189,42 @@ def marchSystemBase(phi_init, xvec, dy, dz, params, allbcs, eqnsys,
 ########## TURBINE MODEL ROUTINES ##########
 ############################################
 
+def computeTurbineForces(x, dx, ym, zm, phi_n, tparams, verbose=0):
+    """
+    Compute turbine model forces from a list of turbines
+    """
+    turbout = []  # Any turbine output goes here
+    eps = 1.0E-5
+    fx = np.zeros_like(phi_n['u'])
+    fy = np.zeros_like(phi_n['u'])
+    fz = np.zeros_like(phi_n['u'])
+
+    for iturb, turbdict in enumerate(tparams):
+        xturb    = turbdict['turbx']
+        if np.abs(x-dx+eps <= xturb) and (xturb < x+eps):
+            name = turbdict['name'] if 'name' in turbdict else 'T'+repr(iturb)
+            zhh  = turbdict['zhh']
+            yhh  = turbdict['turby']
+            R    = turbdict['turbD']*0.5
+            Uinf = rotorAvgUh(ym, zm, phi_n['u'], phi_n['v'], yhh, zhh, R)
+            
+            # Compute the turbine forces and performance
+            if verbose: print(f'Computing forces for turbine {name}')
+            turbADfunc = turbdict['turbfunc']
+            if inspect.isfunction(turbADfunc):
+                func     = turbADfunc
+            else:
+                modname  = turbADfunc.split('.')[0]
+                funcname = turbADfunc.split('.')[1]
+                func     = getattr(sys.modules[modname], funcname)
+            fdict, tout = func(dx, ym, zm, Uinf, phi_n, turbdict)
+
+            fx += fdict['u']
+            fy += fdict['v']
+            fz += fdict['w']
+            turbout.append(tout)
+    return {'u':fx, 'v':fy, 'w':fz}, turbout
+
 def rotorAvgUh(ym, zm, u, v, yhh, zhh, R):
     """
     Compute the rotor average velocity
@@ -220,7 +258,15 @@ def CtTableLookup(Uinf, params):
             return thrust_coefficients
         wind_speeds = params['WS']
     return np.interp(Uinf, wind_speeds, thrust_coefficients, left=0.0, right=0.0)
-    
+
+def PowerTableLookup(Uinf, params):
+    powertable = params['power']+0.0
+    # If it's a scalar value, just return that
+    if isinstance(powertable, float) or isinstance(powertable, int):
+        return powertable
+    wind_speeds = params['WS']
+    return np.interp(Uinf, wind_speeds, powertable, left=0.0, right=0.0)   
+
 
 def tanhADM(dx, y,z, Uinf, phi, params):
     """
@@ -237,3 +283,26 @@ def tanhADM(dx, y,z, Uinf, phi, params):
     F0 = (0.5*Ct*Ulocal**2)/dx      # Force on disk
     Fr = 0.5*(F1-F0)*(1.0 + np.tanh((r-turbR)/Rdelta)) + F0
     return -Fr 
+
+def UnifCtADM(dx, y,z, Uinf, phi, params):
+    """
+    A uniformly loaded actuator disk
+    """
+    zhh    = params['zhh']
+    yhh    = params['turby']
+    Rdelta = params['Rdelta']
+    turbR  = params['turbD']*0.5
+    turbnormal = params['turbnormal'] if 'turbnormal' in params else [-1.0, 0.0, 0.0]
+    Ct     = CtTableLookup(Uinf, params)
+    power  = PowerTableLookup(Uinf, params)
+    r      = np.sqrt((y-yhh)**2 + (z-zhh)**2)
+    Ulocal = np.sqrt(phi['u']**2 + phi['v']**2)
+    Fdisk  = (0.5*Ct*Ulocal**2)/dx      # Force on disk
+    Faxial = Fdisk - 0.5*Fdisk*(1.0 + np.tanh((r-turbR)/Rdelta))
+    Fx     = turbnormal[0]*Faxial
+    Fy     = turbnormal[1]*Faxial
+    Fz     = turbnormal[2]*Faxial
+    forces = {'u':Fx, 'v':Fy, 'w':Fz}
+    turbdat= {'name':params['name'],'Ct':Ct, 'power':power}
+    return forces, turbdat
+
