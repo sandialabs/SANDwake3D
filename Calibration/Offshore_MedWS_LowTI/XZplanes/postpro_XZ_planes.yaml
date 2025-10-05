@@ -1,0 +1,16 @@
+globalattributes:
+  verbose: False
+  executeorder:
+  - xzwake
+
+xzwake:
+    avgplanes:
+      name: Wake XZ plane
+      ncfile:
+        - /lustre/orion/cfd162/world-shared/lcheung/AdvancedControlsWakes/Runs/MedWS_LowTI.Frontier/oneturb_4x2/Baseline/MedWS_LowTI_4kmx2km_5m/post_processing/XZ_68125.nc
+        - /lustre/orion/cfd162/world-shared/lcheung/AdvancedControlsWakes/Runs/MedWS_LowTI.Frontier/oneturb_4x2/Baseline/MedWS_LowTI_4kmx2km_5m/post_processing/XZ_103125.nc
+      tavg: [27750,28450]
+      group: T0_XZ
+      varnames: ['velocityx','velocityy','velocityz']
+      savepklfile: 'XZ_wake.pkl'
+  
