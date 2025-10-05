@@ -1,0 +1,15 @@
+globalattributes:
+  verbose: False
+  executeorder:
+  - xywake
+
+xywake:
+    avgplanes:
+      name: Wake XY plane
+      ncfile: 
+        - /lustre/orion/cfd162/world-shared/lcheung/AdvancedControlsWakes/Runs/LowWS_LowTI.Frontier/oneturb_7x2/rundir_baseline/post_processing/XY_*.nc
+      tavg: [17800,18500]
+      group: T0_XY
+      varnames: ['velocityx','velocityy','velocityz']
+      savepklfile: 'XY_wake.pkl'
+  

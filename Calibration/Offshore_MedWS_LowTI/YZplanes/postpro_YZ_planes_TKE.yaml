@@ -1,0 +1,72 @@
+globalattributes:
+  verbose: True
+  executeorder:
+  - yzcoarse
+  - yzwake1
+  - yzwake2
+  - yzwake3
+  - yzwake4
+
+yzcoarse:
+    reynoldsstress:
+      name: Wake YZ plane
+      ncfile: 
+      - /lustre/orion/cfd162/world-shared/lcheung/AdvancedControlsWakes/Runs/MedWS_LowTI.Frontier/oneturb_4x2/Baseline/MedWS_LowTI_4kmx2km_5m/post_processing/YZcoarse_*.nc
+      tavg: [27750,28450]
+      group: T0_YZdomain
+      varnames: ['velocityx','velocityy','velocityz']
+      savepklfile: 'YZ_coarse_TKE.pkl'
+      meanpklfile: 'YZ_coarse.pkl'
+
+
+yzwake1:
+    reynoldsstress:
+      name: Wake YZ plane
+      ncfile: 
+      - /lustre/orion/cfd162/world-shared/lcheung/AdvancedControlsWakes/Runs/MedWS_LowTI.Frontier/oneturb_4x2/Baseline/MedWS_LowTI_4kmx2km_5m/post_processing/YZwake_68125.nc
+      - /lustre/orion/cfd162/world-shared/lcheung/AdvancedControlsWakes/Runs/MedWS_LowTI.Frontier/oneturb_4x2/Baseline/MedWS_LowTI_4kmx2km_5m/post_processing/YZwake_103125.nc
+      tavg: [27750,28450]
+      group: T0_YZ_wake1      
+      varnames: ['velocityx','velocityy','velocityz']
+      savepklfile: 'YZ_wake1_TKE.pkl'
+      meanpklfile: 'YZ_wake1.pkl'
+
+
+yzwake2:
+    reynoldsstress:
+      name: Wake YZ plane
+      ncfile: 
+      - /lustre/orion/cfd162/world-shared/lcheung/AdvancedControlsWakes/Runs/MedWS_LowTI.Frontier/oneturb_4x2/Baseline/MedWS_LowTI_4kmx2km_5m/post_processing/YZwake_68125.nc
+      - /lustre/orion/cfd162/world-shared/lcheung/AdvancedControlsWakes/Runs/MedWS_LowTI.Frontier/oneturb_4x2/Baseline/MedWS_LowTI_4kmx2km_5m/post_processing/YZwake_103125.nc
+      tavg: [27750,28450]
+      group: T0_YZ_wake2      
+      varnames: ['velocityx','velocityy','velocityz']
+      savepklfile: 'YZ_wake2_TKE.pkl'
+      meanpklfile: 'YZ_wake2.pkl'
+
+
+yzwake3:
+    reynoldsstress:
+      name: Wake YZ plane
+      ncfile: 
+      - /lustre/orion/cfd162/world-shared/lcheung/AdvancedControlsWakes/Runs/MedWS_LowTI.Frontier/oneturb_4x2/Baseline/MedWS_LowTI_4kmx2km_5m/post_processing/YZwake_68125.nc
+      - /lustre/orion/cfd162/world-shared/lcheung/AdvancedControlsWakes/Runs/MedWS_LowTI.Frontier/oneturb_4x2/Baseline/MedWS_LowTI_4kmx2km_5m/post_processing/YZwake_103125.nc
+      tavg: [27750,28450]
+      group: T0_YZ_wake3      
+      varnames: ['velocityx','velocityy','velocityz']
+      savepklfile: 'YZ_wake3_TKE.pkl'
+      meanpklfile: 'YZ_wake3.pkl'
+
+
+yzwake4:
+    reynoldsstress:
+      name: Wake YZ plane
+      ncfile: 
+      - /lustre/orion/cfd162/world-shared/lcheung/AdvancedControlsWakes/Runs/MedWS_LowTI.Frontier/oneturb_4x2/Baseline/MedWS_LowTI_4kmx2km_5m/post_processing/YZwake_68125.nc
+      - /lustre/orion/cfd162/world-shared/lcheung/AdvancedControlsWakes/Runs/MedWS_LowTI.Frontier/oneturb_4x2/Baseline/MedWS_LowTI_4kmx2km_5m/post_processing/YZwake_103125.nc
+      tavg: [27750,28450]
+      group: T0_YZ_wake4
+      varnames: ['velocityx','velocityy','velocityz']
+      savepklfile: 'YZ_wake4_TKE.pkl'
+      meanpklfile: 'YZ_wake4.pkl'
+

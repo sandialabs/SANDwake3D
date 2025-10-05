@@ -1,0 +1,67 @@
+globalattributes:
+  verbose: True
+  executeorder:
+  - yzcoarse
+  - yzwake1
+  - yzwake2
+  - yzwake3
+  - yzwake4
+
+yzcoarse:
+    reynoldsstress:
+      name: Wake YZ plane
+      ncfile: 
+      - /lustre/orion/cfd162/world-shared/lcheung/AdvancedControlsWakes/Runs/LowWS_LowTI.Frontier/oneturb_7x2/rundir_baseline/post_processing/YZcoarse_*nc
+      tavg: [17800,18500]
+      group: T0_YZdomain
+      varnames: ['velocityx','velocityy','velocityz']
+      savepklfile: 'YZ_coarse_RESTRESS.pkl'
+      meanpklfile: 'YZ_coarse.pkl'
+
+
+yzwake1:
+    reynoldsstress:
+      name: Wake YZ plane
+      ncfile: 
+      - /lustre/orion/cfd162/world-shared/lcheung/AdvancedControlsWakes/Runs/LowWS_LowTI.Frontier/oneturb_7x2/rundir_baseline/post_processing/YZwake_*nc
+      tavg: [17800,18500]
+      group: T0_YZ_wake1      
+      varnames: ['velocityx','velocityy','velocityz']
+      savepklfile: 'YZ_wake1_RESTRESS.pkl'
+      meanpklfile: 'YZ_wake1.pkl'
+
+
+yzwake2:
+    reynoldsstress:
+      name: Wake YZ plane
+      ncfile: 
+      - /lustre/orion/cfd162/world-shared/lcheung/AdvancedControlsWakes/Runs/LowWS_LowTI.Frontier/oneturb_7x2/rundir_baseline/post_processing/YZwake_*nc
+      tavg: [17800,18500]
+      group: T0_YZ_wake2      
+      varnames: ['velocityx','velocityy','velocityz']
+      savepklfile: 'YZ_wake2_RESTRESS.pkl'
+      meanpklfile: 'YZ_wake2.pkl'
+
+
+yzwake3:
+    reynoldsstress:
+      name: Wake YZ plane
+      ncfile: 
+      - /lustre/orion/cfd162/world-shared/lcheung/AdvancedControlsWakes/Runs/LowWS_LowTI.Frontier/oneturb_7x2/rundir_baseline/post_processing/YZwake_*nc
+      tavg: [17800,18500]
+      group: T0_YZ_wake3      
+      varnames: ['velocityx','velocityy','velocityz']
+      savepklfile: 'YZ_wake3_RESTRESS.pkl'
+      meanpklfile: 'YZ_wake3.pkl'
+
+yzwake4:
+    reynoldsstress:
+      name: Wake YZ plane
+      ncfile: 
+      - /lustre/orion/cfd162/world-shared/lcheung/AdvancedControlsWakes/Runs/LowWS_LowTI.Frontier/oneturb_7x2/rundir_baseline/post_processing/YZwake_*nc
+      tavg: [17800,18500]
+      group: T0_YZ_wake4
+      varnames: ['velocityx','velocityy','velocityz']
+      savepklfile: 'YZ_wake4_RESTRESS.pkl'
+      meanpklfile: 'YZ_wake4.pkl'
+
