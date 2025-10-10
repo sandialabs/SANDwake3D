@@ -1,0 +1,115 @@
+description: Three turbines using empirical Gaussian model
+farm:
+  layout_x:
+  - 1963.53247
+  - 2981.766235
+  - 4000.0
+  - 2981.766235
+  - 4000.0
+  - 5018.233765
+  - 4000.0
+  - 5018.233765
+  - 6036.46753
+  layout_y:
+  - 4000.0
+  - 2981.766235
+  - 1963.53247
+  - 5018.233765
+  - 4000.0
+  - 2981.766235
+  - 6036.46753
+  - 5018.233765
+  - 4000.0
+  turbine_library_path: /ascldap/users/gyalla/GPFS/Advanced_Controls/Floris/turbine_library
+  turbine_type:
+  - iea_15MW
+floris_version: v4.0
+flow_field:
+  air_density: 1.2456
+  reference_wind_height: -1
+  turbulence_intensities:
+  - 0.0309
+  wind_directions:
+  - 225
+  wind_shear: 0.16
+  wind_speeds:
+  - 8.784633614255391
+  wind_veer: 8.94
+logging:
+  console:
+    enable: true
+    level: WARNING
+  file:
+    enable: false
+    level: WARNING
+name: Emperical Gaussian
+solver:
+  turbine_grid_points: 3
+  type: turbine_grid
+wake:
+  enable_active_wake_mixing: false
+  enable_secondary_steering: false
+  enable_transverse_velocities: false
+  enable_yaw_added_recovery: false
+  model_strings:
+    combination_model: sosfs
+    deflection_model: empirical_gauss
+    turbulence_model: wake_induced_mixing
+    velocity_model: empirical_gauss
+  wake_deflection_parameters:
+    empirical_gauss:
+      deflection_rate: 30
+      horizontal_deflection_gain_D: 3.0
+      mixing_gain_deflection: 0.0
+      vertical_deflection_gain_D: -1
+      yaw_added_mixing_gain: 0.0
+    gauss:
+      ad: 0.0
+      alpha: 0.58
+      bd: 0.0
+      beta: 0.077
+      dm: 1.0
+      ka: 0.38
+      kb: 0.004
+    jimenez:
+      ad: 0.0
+      bd: 0.0
+      kd: 0.05
+  wake_turbulence_parameters:
+    crespo_hernandez:
+      ai: 0.8
+      constant: 0.5
+      downstream: -0.32
+      initial: 0.1
+    wake_induced_mixing:
+      atmospheric_ti_gain: 0.1
+  wake_velocity_parameters:
+    cc:
+      a_f: 3.11
+      a_s: 0.179367259
+      alpha_mod: 1.0
+      b_f: -0.68
+      b_s: 0.0118889215
+      c_f: 2.41
+      c_s1: 0.0563691592
+      c_s2: 0.13290157
+    empirical_gauss:
+      awc_wake_denominator: 400
+      awc_wake_exp: 1.2
+      breakpoints_D:
+      - 4.1085781527711225
+      - 11.669334552973915
+      mixing_gain_velocity: 3.308139775170343
+      sigma_0_D: 0.28
+      smoothing_length_D: 2.0
+      wake_expansion_rates:
+      - 0.0036464646727800824
+      - 0.02584939232511248
+      - 0.6850233768241475
+    gauss:
+      alpha: 0.58
+      beta: 0.077
+      ka: 0.38
+      kb: 0.004
+    jensen:
+      we: 0.05

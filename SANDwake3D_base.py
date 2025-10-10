@@ -260,11 +260,12 @@ def CtTableLookup(Uinf, params):
     return np.interp(Uinf, wind_speeds, thrust_coefficients, left=0.0, right=0.0)
 
 def PowerTableLookup(Uinf, params):
-    powertable = params['power']+0.0
+    powertable = params['power']
     # If it's a scalar value, just return that
     if isinstance(powertable, float) or isinstance(powertable, int):
         return powertable
     wind_speeds = params['WS']
+    powertable = np.array(params['power'])
     return np.interp(Uinf, wind_speeds, powertable, left=0.0, right=0.0)   
 
 

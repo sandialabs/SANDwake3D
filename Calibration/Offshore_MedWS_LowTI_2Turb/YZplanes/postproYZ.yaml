@@ -1,0 +1,102 @@
+__replacestrings__:
+  RUNDIR_2T: /tscratch/gyalla/Advanced_Control/AMR/Turbine_Runs/Two_Turb/runs_for_Ken/medWS_lowTI/baseline_2T/
+  ~~TAVG~~: [27850,28450]
+
+times: &times [27850]
+
+globalattributes:
+  verbose: False
+#  udfmodules:
+#  - testinterp.py  
+  executeorder:
+#  - doaveragesYZ
+  - doTKE_YZ
+
+doaveragesYZ:
+  avgplanes:
+  - name: YZwake1
+    ncfile: RUNDIR_2T/YZwake_*.nc
+    tavg: ~~TAVG~~
+    varnames: [ 'velocityx', 'velocityy', 'velocityz'] 
+    group: T0_YZ_wake1
+    savepklfile: 'YZ_wake1.pkl'
+    rotorAvgVel:
+      Diam: 240
+      yc: 150
+      xaxis: 'y'
+      yaxis: 'z'
+      avgfunc: "lambda db: db['velocityx_avg']"
+      savefile: rotor_avg_vel_wake1.csv
+
+  - name: YZwake2
+    ncfile: RUNDIR_2T/YZwake_*.nc
+    tavg: ~~TAVG~~
+    varnames: [ 'velocityx', 'velocityy', 'velocityz'] 
+    group: T0_YZ_wake2
+    savepklfile: 'YZ_wake2.pkl'
+    rotorAvgVel:
+      Diam: 240
+      yc: 150
+      xaxis: 'y'
+      yaxis: 'z'
+      avgfunc: "lambda db: db['velocityx_avg']"
+      savefile: rotor_avg_vel_wake2.csv
+
+  - name: YZwake3
+    ncfile: RUNDIR_2T/YZwake_*.nc
+    tavg: ~~TAVG~~
+    varnames: [ 'velocityx', 'velocityy', 'velocityz'] 
+    group: T0_YZ_wake3
+    savepklfile: 'YZ_wake3.pkl'
+    rotorAvgVel:
+      Diam: 240
+      yc: 150
+      xaxis: 'y'
+      yaxis: 'z'
+      avgfunc: "lambda db: db['velocityx_avg']"
+      savefile: rotor_avg_vel_wake3.csv
+
+  - name: YZwake4
+    ncfile: RUNDIR_2T/YZwake_*.nc
+    tavg: ~~TAVG~~
+    varnames: [ 'velocityx', 'velocityy', 'velocityz'] 
+    group: T0_YZ_wake4
+    savepklfile: 'YZ_wake4.pkl'    
+    rotorAvgVel:
+      Diam: 240
+      yc: 150
+      xaxis: 'y'
+      yaxis: 'z'
+      avgfunc: "lambda db: db['velocityx_avg']"
+      savefile: rotor_avg_vel_wake4.csv
+
+doTKE_YZ:
+    reynoldsstress:
+    - name: Wake YZ plane 1
+      ncfile: RUNDIR_2T/YZwake_*.nc
+      tavg: ~~TAVG~~
+      group: T0_YZ_wake1
+      varnames: ['velocityx','velocityy','velocityz']
+      savepklfile: 'YZ_wake1_TKE.pkl'
+      meanpklfile: 'YZ_wake1.pkl'
+    - name: Wake YZ plane 2
+      ncfile: RUNDIR_2T/YZwake_*.nc
+      tavg: ~~TAVG~~
+      group: T0_YZ_wake2
+      varnames: ['velocityx','velocityy','velocityz']
+      savepklfile: 'YZ_wake2_TKE.pkl'
+      meanpklfile: 'YZ_wake2.pkl'
+    - name: Wake YZ plane 3
+      ncfile: RUNDIR_2T/YZwake_*.nc
+      tavg: ~~TAVG~~
+      group: T0_YZ_wake3
+      varnames: ['velocityx','velocityy','velocityz']
+      savepklfile: 'YZ_wake3_TKE.pkl'
+      meanpklfile: 'YZ_wake3.pkl'
+    - name: Wake YZ plane 4
+      ncfile: RUNDIR_2T/YZwake_*.nc
+      tavg: ~~TAVG~~
+      group: T0_YZ_wake4
+      varnames: ['velocityx','velocityy','velocityz']
+      savepklfile: 'YZ_wake4_TKE.pkl'
+      meanpklfile: 'YZ_wake4.pkl'

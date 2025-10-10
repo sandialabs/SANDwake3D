@@ -81,14 +81,27 @@ params = {
     'ym':ym,
     'zm':zm,
     
-    'turbforcing':{'turbx':120.0,     # Turbine x location
+    'turbforcing':{'turbx':-120.0E6,     # Turbine x location
                    'turby':0.0,     # Turbine y location
                    'zhh':turbhh,      # Turbine hub-height
                    'turbD':rotorD,   # Turbine diameter
                    'Ct':0.80,
                    'Rdelta':24, #40,
                    'turbfunc':sdb.tanhADM,
-                  }
+                  },
+    'turbinelist': [
+            {'name':'T0',
+             'turbx':120.0,     # Turbine x location
+             'turby':0.0,       # Turbine y location
+             'zhh':turbhh,      # Turbine hub-height
+             'turbD':rotorD,    # Turbine diameter
+             'turbnormal':[-1, 0, 0],
+             'Ct':0.80,
+             'power':1000.123,
+             'Rdelta':24,
+             'turbfunc':'SANDwake3D_base.UnifCtADM',
+            },
+        ]
 }
 
 # This parameter defines V(z) -- deg per meter

@@ -1,0 +1,27 @@
+globalattributes:
+  verbose: False
+  executeorder:
+  - xywake
+
+__replacestrings__:
+  RUNDIR_2T: /tscratch/gyalla/Advanced_Control/AMR/Turbine_Runs/Two_Turb/runs_for_Ken/medWS_lowTI/baseline_2T/
+  ~~TAVG~~: [27850,28450]
+
+xywake:
+    avgplanes:
+      name: Wake XY plane
+      ncfile:
+        - RUNDIR_2T/XY_*.nc
+      tavg: ~~TAVG~~
+      group: T0_XY
+      varnames: ['velocityx','velocityy','velocityz']
+      savepklfile: 'XY_wake.pkl'
+    reynoldsstress:
+    - name: Wake XY plane
+      ncfile: RUNDIR_2T/XY_*.nc
+      tavg: ~~TAVG~~
+      group: T0_XY
+      varnames: ['velocityx','velocityy','velocityz']
+      savepklfile: 'XY_wake_TKE.pkl'
+      meanpklfile: 'XY_wake.pkl'
+  
