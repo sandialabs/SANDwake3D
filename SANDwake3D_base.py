@@ -149,7 +149,7 @@ def advanceSystem(phi_n, x, dx, dy, dz, params, allbcs, eqnsys, maxiter=100,
 
 def marchSystemBase(phi_init, xvec, dy, dz, params, allbcs, eqnsys,
                     advanceSys=advanceSystem, maxiter=100, tol=1.0E-6, verbose=False,
-                    postadvfunc=None):
+                    postadvfunc=None, **kwargs):
     """
     March the system in x according xvec
     """
@@ -176,7 +176,7 @@ def marchSystemBase(phi_init, xvec, dy, dz, params, allbcs, eqnsys,
         dx = x-xprev
         if verbose:
             print(f'x = {x} dx = {dx}')
-        phinext = advanceSys(phiprev, x, dx, dy, dz, params, allbcs, eqnsys, verbose=verbose, maxiter=maxiter, tol=tol)
+        phinext = advanceSys(phiprev, x, dx, dy, dz, params, allbcs, eqnsys, verbose=verbose, maxiter=maxiter, tol=tol, **kwargs)
         for v in varlist:
             phi[v][xi+1,:,:] = phinext[v]
         phiprev = phinext.copy()

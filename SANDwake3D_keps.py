@@ -458,7 +458,7 @@ def get_nut(phi, cmu, nu):
 
 
 def advanceSystemKEPS(
-    phi_n, x, dx, dy, dz, params, allbcs, eqnsys, maxiter=100, tol=1.0e-6, verbose=False
+    phi_n, x, dx, dy, dz, params, allbcs, eqnsys, maxiter=100, tol=1.0e-6, freezevar=0.0, verbose=False
 ):
     """
     Advance equation system 1 step in x
@@ -499,7 +499,10 @@ def advanceSystemKEPS(
         fturbines, turboutput  = sdb.computeTurbineForces(x, dx, ym, zm,
                                                           phi_n, turbparams,
                                                           verbose=verbose)
-        
+
+    varconverged = {}
+    for v in varlist: varconverged[v] = False
+    
     # Loop until converged
     for k in range(maxiter):
         phi_next = OrderedDict()
@@ -615,20 +618,26 @@ def advanceSystemKEPS(
 
             sigma = f"""sigma{v}"""
 
-            phi_next[v] = eqnsys[v](
-                v,
-                phi_n1,
-                phi_n,
-                phi_tilde,
-                aux_vars,
-                x,
-                dx,
-                dy,
-                dz,
-                params,
-                bcvar,
-                fturbines=fturbines,
-            )
+            if (not varconverged[v]):
+                phi_next[v] = eqnsys[v](
+                    v,
+                    phi_n1,
+                    phi_n,
+                    phi_tilde,
+                    aux_vars,
+                    x,
+                    dx,
+                    dy,
+                    dz,
+                    params,
+                    bcvar,
+                    fturbines=fturbines,
+                )
+            else:
+                phi_next[v] = phi_n1[v].copy()
+            varconverged[v], _ = sdb.convergetest({v:phi_next[v]},
+                                                  {v:phi_n1[v]},
+                                                  tol*freezevar, testvars=[v])
 
         # Test for convergence
         converged, convergedat = sdb.convergetest(phi_next, phi_n1, tol, testvars=convergevars)
