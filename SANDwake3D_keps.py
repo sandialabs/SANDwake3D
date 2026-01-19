@@ -94,7 +94,7 @@ def rhs_f_np1(field, f_nhalf, phi_tilde, dy_nut_tilde, dx, dy, params):
 
 
 def rhs_f_extra_forcing(field, phi, phi_n, aux_vars, params, x, dx, dy, dz,
-                        fturbines={}):
+                        fturbines={}, fcoriolis={}):
     """
     Compute the RHS extra forcing if necessary
     """
@@ -148,7 +148,8 @@ def rhs_f_extra_forcing(field, phi, phi_n, aux_vars, params, x, dx, dy, dz,
     if field in ("u"):
         rho      = 1.0  # REMINDER -- the rho's cancel out in the Poisson equation
         fturb    = fturbines['u'] if 'u' in fturbines else 0.0
-        fx       = -1.0/rho*aux_vars["dx_p"] + fturb
+        fcor     = fcoriolis['u'] if 'u' in fcoriolis else 0.0
+        fx       = -1.0/rho*aux_vars["dx_p"] + fturb + fcor
 
         # This will be obsoleted soon!!
         if 'turbforcing' in params:
@@ -167,12 +168,14 @@ def rhs_f_extra_forcing(field, phi, phi_n, aux_vars, params, x, dx, dy, dz,
 
     if field in ( "v"):
         fturb    = fturbines['v'] if 'v' in fturbines else 0.0
+        fcor     = fcoriolis['v'] if 'v' in fcoriolis else 0.0
         rho = 1.0  # REMINDER -- the rho's cancel out in the Poisson equation 
-        return -1.0/rho*aux_vars["dy_p"] + fturb
+        return -1.0/rho*aux_vars["dy_p"] + fturb + fcor
     if field in ( "w"):
         fturb    = fturbines['w'] if 'w' in fturbines else 0.0
+        fcor     = fcoriolis['w'] if 'w' in fcoriolis else 0.0
         rho = 1.0  # REMINDER -- the rho's cancel out in the Poisson equation 
-        return -1.0/rho*aux_vars["dz_p"] + aux_vars["B_z"] + fturb
+        return -1.0/rho*aux_vars["dz_p"] + aux_vars["B_z"] + fturb + fcor
         
     # NOTE: This conditional down here needs to be generalized
     if field in ( "T"):
@@ -183,7 +186,8 @@ def rhs_f_extra_forcing(field, phi, phi_n, aux_vars, params, x, dx, dy, dz,
 
 def advanceF(field, phi_np1old, phi_n, phi_tilde, aux_vars, x, dx, dy, dz,
              params, bcvar,
-             fturbines={}):
+             fturbines={},
+             fcoriolis={}):
     """
     Advance the field one full step
     """
@@ -206,7 +210,7 @@ def advanceF(field, phi_np1old, phi_n, phi_tilde, aux_vars, x, dx, dy, dz,
     v_total = v_tilde - aux_vars["dy_nut"]  / params[sigma]
     w_total = w_tilde - aux_vars["dz_nut"]  / params[sigma]
 
-    rhs_extra_forcing = rhs_f_extra_forcing(field, phi_tilde, phi_n, aux_vars, params, x, dx, dy, dz, fturbines)
+    rhs_extra_forcing = rhs_f_extra_forcing(field, phi_tilde, phi_n, aux_vars, params, x, dx, dy, dz, fturbines, fcoriolis)
 
     # First sweep: n -> n+1/2
     # -----------------------
@@ -353,6 +357,7 @@ def advanceP(
     params,
     bcvar,
     fturbines={},
+    fcoriolis={},
 ):
     """
     Advance the pressure Poisson equation one full step (in artificial time!)
@@ -499,7 +504,14 @@ def advanceSystemKEPS(
         fturbines, turboutput  = sdb.computeTurbineForces(x, dx, ym, zm,
                                                           phi_n, turbparams,
                                                           verbose=verbose)
+    # Compute Coriolis forces if necessary
+    fcoriolis  = {}
+    if 'Coriolis' in params:
+        coriolisparams = params['Coriolis']
+        fcoriolis = sdb.computeCoriolisForces(phi_n, coriolisparams,
+                                              verbose=verbose)
 
+    # Reset convergence
     varconverged = {}
     for v in varlist: varconverged[v] = False
     
@@ -632,6 +644,7 @@ def advanceSystemKEPS(
                     params,
                     bcvar,
                     fturbines=fturbines,
+                    fcoriolis=fcoriolis,
                 )
             else:
                 phi_next[v] = phi_n1[v].copy()

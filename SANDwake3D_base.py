@@ -186,6 +186,27 @@ def marchSystemBase(phi_init, xvec, dy, dz, params, allbcs, eqnsys,
     return phi
 
 ############################################
+########## COMPUTE COROILIS FORCE ##########
+############################################
+def computeCoriolisForces(phi_n, cparams, verbose=0):
+    """
+    Compute Coriolis forces
+    """
+    latitude = cparams['latitude']
+    if latitude is None: return {}
+    
+    phi      = latitude*np.pi/180.0
+    sinphi   = np.sin(phi)
+    rotperiod= cparams['rotperiod'] if 'rotperiod' in cparams else 86164.091
+    omega    = 2.0*np.pi/rotperiod
+    f3       = -2.0*omega*sinphi
+    fcor     = {}
+    fcor['u'] = -f3*phi_n['u']
+    fcor['v'] =  f3*phi_n['v']
+    fcor['w'] = np.zeros_like(phi_n['u'])
+    return fcor
+
+############################################
 ########## TURBINE MODEL ROUTINES ##########
 ############################################
 
