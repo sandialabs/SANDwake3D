@@ -777,6 +777,21 @@ def init_k_ABL(z, param):
 
     return MO_k0(z, L, ustar)
 
+def init_T_ABL(z, param):
+    g   = 0.0 #param["g"]
+    cp  = param["cp"]
+    L = param["L"]
+    K = param["kappa"]
+    Tw  = param["Tw"]
+    qw  = param["qw"]
+    rho = param["rho"]
+    ustar = param["ustar"]
+    z0  = param["z0"]
+    Tw  = param["Tw"]
+    Tstar = -qw/(rho*cp*ustar)    # Eq. (15), Alinot & Masson
+
+    return Tw+MO_Tfunc(z, z0, K, L, Tstar, g, cp)
+
 
 def set_e_init(zvec, dz, u, k, params):
     Cmu = params["Cmu"]
