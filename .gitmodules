@@ -1,0 +1,3 @@
+[submodule "submodules/inputdicthelper"]
+	path = submodules/inputdicthelper
+	url = git@github.com:lawrenceccheung/inputdicthelper.git
