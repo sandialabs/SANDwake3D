@@ -1070,4 +1070,119 @@ kepsT_eqns["p"] = advanceP
 # Use the same marchSystemBase in SANDWake3D_base to advance the equations
 marchSystem = partial(sdb.marchSystemBase, postadvfunc=calcTref)
 
+########################################################
+# Define the input parameters
 
+# Mesh parameters
+meshsubdict = [
+    {'key':'dx',   'required':True, 'type':(int, float), 'default':10.0, 'validate':(lambda x: (x>0.0)), 'help':'Mesh spacing in x',},
+    {'key':'xmin', 'required':True, 'type':(int, float), 'default':10.0, 'validate':None,                'help':'Minimum x location',},
+    {'key':'xmax', 'required':True, 'type':(int, float), 'default':10.0, 'validate':(lambda x: (x>0.0)), 'help':'Maximum x location',},
+    {'key':'dy',   'required':True, 'type':(int, float), 'default':10.0, 'validate':(lambda x: (x>0.0)), 'help':'Mesh spacing in y',},
+    {'key':'ymin', 'required':True, 'type':(int, float), 'default':10.0, 'validate':None,                'help':'Minimum y location',},
+    {'key':'ymax', 'required':True, 'type':(int, float), 'default':10.0, 'validate':(lambda x: (x>0.0)), 'help':'Maximum y location',},
+    {'key':'dz',   'required':True, 'type':(int, float), 'default':10.0, 'validate':(lambda x: (x>0.0)), 'help':'Mesh spacing in z',},
+    {'key':'zmin', 'required':True, 'type':(int, float), 'default':10.0, 'validate':(lambda x: (x>0.0)), 'help':'Minimum z height',},
+    {'key':'zmax', 'required':True, 'type':(int, float), 'default':10.0, 'validate':(lambda x: (x>0.0)), 'help':'Maximum z height',},
+
+]
+
+# Main RANS input
+RANSinput = [
+    {'key':'mesh', 'required':True,  'type':{}, 'default':meshsubdict, 'validate':None, 'help':'Mesh parameters',},
+    {'key':'rho',  'required':True, 'type':(int, float), 'default':1.225, 'validate':(lambda x: (x>0.0)), 'help':'Density [kg/m^3]',},
+    {'key':'cp',   'required':True, 'type':(int, float), 'default':1005.0, 'validate':(lambda x: (x>0.0)), 'help':'Heat capacity of air',},
+    {'key':'g',    'required':True, 'type':(int, float), 'default':9.81,   'validate':(lambda x: (x>0.0)), 'help':'Gravity',},
+    {'key':'nu',   'required':True, 'type':(int, float), 'default':1.5E-5, 'validate':(lambda x: (x>0.0)), 'help':'Kinematic viscosity',},
+
+    {'key':'Cmu',    'required':True, 'type':(int, float), 'default':0.0,    'validate':(lambda x: (x>0.0)), 'help':'Calibration constant',},
+    {'key':'C1eps',  'required':True, 'type':(int, float), 'default':0.0,    'validate':(lambda x: (x>0.0)), 'help':'Calibration constant',},
+    {'key':'C2eps',  'required':True, 'type':(int, float), 'default':0.0,    'validate':(lambda x: (x>0.0)), 'help':'Calibration constant',},
+    {'key':'C3eps',  'required':False, 'type':None,        'default':None,  'validate':None, 'help':'Calibration constant',},
+    {'key':'Ck',     'required':True, 'type':(int, float), 'default':0.0,    'validate':(lambda x: (x>0.0)), 'help':'Calibration constant',},
+    {'key':'sigmak',    'required':False, 'type':(int, float), 'default':1.0,  'validate':(lambda x: (x>0.0)), 'help':'Calibration constant',},
+    {'key':'sigmaeps',  'required':False, 'type':(int, float), 'default':1.3,  'validate':(lambda x: (x>0.0)), 'help':'Calibration constant',},
+
+    {'key':'dtau',      'required':False, 'type':(int, float), 'default':0.5,  'validate':(lambda x: (x>0.0)), 'help':'Pressure relaxation',},
+    {'key':'ustar',     'required':True,  'type':(int, float), 'default':0.5,  'validate':(lambda x: (x>0.0)), 'help':'Inflow friction velocity',},
+    {'key':'qw',        'required':True,  'type':(int, float), 'default':0.0,  'validate':None, 'help':'Surface heat flux',},
+    {'key':'L',         'required':True,  'type':(int, float), 'default':0.5,  'validate':None, 'help':'Inflow Obukhov length',},
+    {'key':'kappa',     'required':False,  'type':(int, float), 'default':0.42, 'validate':(lambda x: (x>0.0)), 'help':'von Karman constant',},
+    {'key':'z0',        'required':True,  'type':(int, float), 'default':0.1,  'validate':(lambda x: (x>0.0)), 'help':'Surface roughness',},
+
+    {'key':'Tw',        'required':True,  'type':(int, float), 'default':300,  'validate':(lambda x: (x>0.0)), 'help':'Surface temperature',},
+    {'key':'beta',      'required':True,  'type':(int, float), 'default':1.0/300.0,  'validate':(lambda x: (x>0.0)), 'help':'Volumetric expansion',},
+    {'key':'Tref',      'required':True,  'type':None,         'default':None,  'validate':None,               'help':'Reference temperature',},
+
+    {'key':'turbinelist', 'required':False,  'type':[],   'default':[], 'validate':None, 'help':'List of turbines',},
+]
+
+def makemesh(meshparams):
+    """
+    Create the y- and z-mesh, and create the x-vector
+    """
+    eps = 1.0E-6
+    p = meshparams
+
+    xvec = np.arange(p['xmin'], p['xmax']+eps, p['dx'])
+    yvec = np.arange(p['ymin'], p['ymax']+eps, p['dy'])
+    zvec = np.arange(p['zmin'], p['zmax']+eps, p['dz'])
+
+    ym, zm = np.meshgrid(yvec, zvec, indexing='ij')
+    return ym, zm, xvec, yvec, zvec
+
+def initPhi(params, yvec, zvec):
+    """
+    """
+    veerpermeter   = params['veerpermeter']
+    zeroveerheight = params['zeroveerheight']
+    kfactor        = params['Ck']
+    
+    Ny = len(yvec)
+    Nz = len(zvec)
+
+    # Set up ABL profile
+    UABL = np.zeros(Nz)
+    for iz, z in enumerate(zvec):
+        UABL[iz] = SANDwake3D.init_U_ABL(z,params)
+
+    # Set up veer profile
+    veerProf = np.zeros(Nz)
+    for i, z in enumerate(zvec):
+        veerProf[i] = veerpermeter*(z-zeroveerheight)
+
+    Uprof, Vprof = SANDwake3D.getUVfromUhVeer(UABL, veerProf)
+    
+    tempT = np.zeros(Nz)
+    for i, z in enumerate(zvec):
+        #tempT[i] = params['Tw'] + Tpermeter*z
+        tempT[i] = SANDwake3D.init_T_ABL(z, params)
+
+
+    Uinit  = np.zeros((Ny, Nz))
+    Vinit  = np.zeros((Ny, Nz))
+    Winit  = np.zeros((Ny, Nz))
+    Kinit  = np.zeros((Ny, Nz))
+    Tinit  = np.zeros((Ny, Nz)) 
+    EPSinit= np.zeros((Ny, Nz))
+    pinit  = np.zeros((Ny, Nz))
+
+    for iz, z in enumerate(zvec):
+        Uinit[:, iz] = Uprof[iz] #SANDwake3D.init_U_ABL(z,ABLparam)
+        Vinit[:, iz] = Vprof[iz]
+        Winit[:, iz] = 0.0
+    
+        Kinit[:, iz]   = SANDwake3D.init_k_ABL(z,params)*kfactor 
+        EPSinit[:, iz] = SANDwake3D.init_e_ABL(z,params)
+        Tinit[:, iz] = tempT[iz]
+    
+    phiinit = {}
+    phiinit['u'] = Uinit
+    phiinit['v'] = Vinit
+    phiinit['w'] = Winit
+    phiinit['k'] = Kinit
+    phiinit['T'] = Tinit
+    phiinit['eps'] = EPSinit
+    phiinit['p'] = pinit
+
+    return phiinit
