@@ -54,6 +54,7 @@ if __name__ == "__main__":
 
     # make the mesh
     params['ym'], params['zm'], xvec, yvec, zvec = SANDwake3D.makemesh(params['mesh'])
+    params['zlo'] = params['mesh']['zmin'] 
     Ny = len(yvec)
     Nz = len(zvec)
 

@@ -1114,6 +1114,10 @@ RANSinput = [
     {'key':'beta',      'required':True,  'type':(int, float), 'default':1.0/300.0,  'validate':(lambda x: (x>0.0)), 'help':'Volumetric expansion',},
     {'key':'Tref',      'required':True,  'type':None,         'default':None,  'validate':None,               'help':'Reference temperature',},
 
+    # Initial conditions
+    {'key':'z0',        'required':True,  'type':(int, float), 'default':0.1,  'validate':(lambda x: (x>0.0)), 'help':'Surface roughness',},
+    
+    # Turbine 
     {'key':'turbinelist', 'required':False,  'type':[],   'default':[], 'validate':None, 'help':'List of turbines',},
 ]
 
