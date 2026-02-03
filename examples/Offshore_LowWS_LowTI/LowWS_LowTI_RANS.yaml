@@ -1,0 +1,60 @@
+# SANDwake3D inputs
+mesh:                                   # Mesh parameters [Required: True, default: {}]
+  dx: 120.0                             # Mesh spacing in x [Required: True, default: 10.0]
+  xmin: 0.0                             # Minimum x location [Required: True, default: 10.0]
+  xmax: 2520                          # Maximum x location [Required: True, default: 10.0]
+  dy: 10.0                              # Mesh spacing in y [Required: True, default: 10.0]
+  ymin: -400.0                          # Minimum y location [Required: True, default: 10.0]
+  ymax: 400.0                           # Maximum y location [Required: True, default: 10.0]
+  dz: 10.0                              # Mesh spacing in z [Required: True, default: 10.0]
+  zmin: 2.0                             # Minimum z height [Required: True, default: 10.0]
+  zmax: 402.0                           # Maximum z height [Required: True, default: 10.0]
+rho: 1.225                              # Density [kg/m^3] [Required: True, default: 1.225]
+cp: 1005.0                              # Heat capacity of air [Required: True, default: 1005.0]
+g: 9.81                                 # Gravity [Required: True, default: 9.81]
+nu: 1.5e-05                             # Kinematic viscosity [Required: True, default: 1.5e-05]
+Cmu: 0.07586245                         # Calibration constant [Required: True, default: 0.0]
+C1eps: 1.45631433                       # Calibration constant [Required: True, default: 0.0]
+C2eps: 1.92560166                       # Calibration constant [Required: True, default: 0.0]
+C3eps:                                  # Calibration constant [Required: False, default: None]
+Ck: 0.40                                # Calibration constant [Required: True, default: 0.0]
+sigmak: 1.0                             # Calibration constant [Required: False, default: 1.0]
+sigmaeps: 1.3                           # Calibration constant [Required: False, default: 1.3]
+sigmaT: 1.0                             # Calibration constant [Required: False, default: 1.0]
+dtau: 0.5                               # Pressure relaxation [Required: False, default: 0.5]
+ustar: 0.175                            # Inflow friction velocity [Required: True, default: 0.5]
+qw: -1.5                                # Surface heat flux [Required: True, default: 0.0]
+L: 500                                  # Inflow Obukhov length [Required: True, default: 0.5]
+kappa: 0.42                             # von Karman constant [Required: False, default: 0.42]
+z0: 0.0001                              # Surface roughness [Required: True, default: 0.1]
+Tw: 284.15                              # Surface temperature [Required: True, default: 300]
+beta: 0.00351926799225761041             # Volumetric expansion [Required: True, default: 0.0033333333333333335]
+Tref:                                   # Reference temperature [Required: True, default: None]
+lapserate: 0.0                          # Lapse rate [Required: True, default: 0.0]
+veerpermeter: 0.05                      # Change in veer with elevation [deg/meter] [Required: False, default: 0.0]
+zeroveerheight: 150.0                   # Z height where veer is zero [Required: True, default: 90.0]
+
+Coriolis:                               # Coriolis parameters [Required: False, default: {}]
+  latitude: 39.55                       # Latitude in degrees [Required: True, default: 0.0]
+  rotperiod: 86164.091                  # Earth rotational period [Required: False, default: 86164.091]
+
+turbinelist:                            # List of turbines [Required: False, default: []]
+  - name: 'T0'
+    turbx: 120.0      # Turbine x location
+    turby: 0.0        # Turbine y location
+    zhh: 150          # Turbine hub-height
+    turbD: 240.0      # Turbine diameter
+    turbnormal: [-1, 0, 0]
+    Ct: 0.80
+    power: 1000.123
+    Rdelta: 24
+    turbfunc: 'SANDwake3D_base.UnifCtADM'
+
+solveroptions:                          # Solver options [Required: False, default: {}]
+  verbose: 2                            # Solver verbosity level (0, 1, or 2) [Required: False, default: 1]
+  maxiter: 100                          # Number of solver iterations [Required: False, default: 100]
+  tol: 0.0001                           # Solver convergence tolerance [Required: False, default: 0.0001]
+
+savepklfile: Phi_LowWS_LowTI.pkl        # Filename to save results [Required: False, default: '']
+
+

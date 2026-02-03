@@ -1077,14 +1077,38 @@ marchSystem = partial(sdb.marchSystemBase, postadvfunc=calcTref)
 meshsubdict = [
     {'key':'dx',   'required':True, 'type':(int, float), 'default':10.0, 'validate':(lambda x: (x>0.0)), 'help':'Mesh spacing in x',},
     {'key':'xmin', 'required':True, 'type':(int, float), 'default':10.0, 'validate':None,                'help':'Minimum x location',},
-    {'key':'xmax', 'required':True, 'type':(int, float), 'default':10.0, 'validate':(lambda x: (x>0.0)), 'help':'Maximum x location',},
+    {'key':'xmax', 'required':True, 'type':(int, float), 'default':10.0, 'validate':None,                'help':'Maximum x location',},
     {'key':'dy',   'required':True, 'type':(int, float), 'default':10.0, 'validate':(lambda x: (x>0.0)), 'help':'Mesh spacing in y',},
     {'key':'ymin', 'required':True, 'type':(int, float), 'default':10.0, 'validate':None,                'help':'Minimum y location',},
-    {'key':'ymax', 'required':True, 'type':(int, float), 'default':10.0, 'validate':(lambda x: (x>0.0)), 'help':'Maximum y location',},
+    {'key':'ymax', 'required':True, 'type':(int, float), 'default':10.0, 'validate':None,                'help':'Maximum y location',},
     {'key':'dz',   'required':True, 'type':(int, float), 'default':10.0, 'validate':(lambda x: (x>0.0)), 'help':'Mesh spacing in z',},
     {'key':'zmin', 'required':True, 'type':(int, float), 'default':10.0, 'validate':(lambda x: (x>0.0)), 'help':'Minimum z height',},
     {'key':'zmax', 'required':True, 'type':(int, float), 'default':10.0, 'validate':(lambda x: (x>0.0)), 'help':'Maximum z height',},
+]
 
+Coriolisdict = [
+    {'key':'latitude',  'required':True, 'type':(int, float), 'default':0.0, 'validate':(lambda x: (x>=-90.0)and(x<=90.0)), 'help':'Latitude in degrees',},
+    {'key':'rotperiod', 'required':False, 'type':(int, float), 'default':86164.091, 'validate':(lambda x: (x>0.0)),         'help':'Earth rotational period',}
+]
+
+solveopts = [
+    {'key':'verbose',  'required':False, 'type':int, 'default':1, 'validate':(lambda x: (x>=0)),  'help':'Solver verbosity level (0, 1, or 2)',},
+    {'key':'maxiter',  'required':False, 'type':int, 'default':100, 'validate':(lambda x: (x>0)), 'help':'Number of solver iterations',},
+    {'key':'tol',      'required':False, 'type':(int, float), 'default':1.0E-4, 'validate':(lambda x: (x>0.0)), 'help':'Solver convergence tolerance',},
+    
+]
+
+turbdict = [
+    {'key':'name',     'required':True,  'type':str,         'default':'',  'validate':None,         'help':'Turbine name',},
+    {'key':'turbx',    'required':True, 'type':(int, float), 'default':0.0, 'validate':None,         'help':'Turbine location in x',},
+    {'key':'turby',    'required':True, 'type':(int, float), 'default':0.0, 'validate':None,         'help':'Turbine location in y',},
+    {'key':'zhh',      'required':True, 'type':(int, float), 'default':0.0, 'validate':(lambda x: (x>0)),         'help':'Turbine hub-height',},
+    {'key':'turbD',    'required':True, 'type':(int, float), 'default':0.0, 'validate':(lambda x: (x>0)),         'help':'Turbine rotor diameter',},
+    {'key':'turbnormal',  'required':False, 'type':[], 'default':[-1.0, 0.0, 0.0], 'validate':None,               'help':'Turbine rotor normal (facing upstream)',},
+    {'key':'Ct',       'required':True, 'type':None, 'default':0.80, 'validate':None,                             'help':'Turbine Ct',},
+    {'key':'power',    'required':True, 'type':None, 'default':1000.0, 'validate':None,                           'help':'Turbine power',},
+    {'key':'Rdelta',   'required':True, 'type':(int, float), 'default':24.0, 'validate':(lambda x: (x>0)),        'help':'Turbine tip sharpness',},
+    {'key':'turbfunc', 'required':False,  'type':str,        'default':'SANDwake3D_base.UnifCtADM',  'validate':None,         'help':'Turbine function type',},    
 ]
 
 # Main RANS input
@@ -1102,6 +1126,7 @@ RANSinput = [
     {'key':'Ck',     'required':True, 'type':(int, float), 'default':0.0,    'validate':(lambda x: (x>0.0)), 'help':'Calibration constant',},
     {'key':'sigmak',    'required':False, 'type':(int, float), 'default':1.0,  'validate':(lambda x: (x>0.0)), 'help':'Calibration constant',},
     {'key':'sigmaeps',  'required':False, 'type':(int, float), 'default':1.3,  'validate':(lambda x: (x>0.0)), 'help':'Calibration constant',},
+    {'key':'sigmaT',    'required':False, 'type':(int, float), 'default':1.0,  'validate':(lambda x: (x>0.0)), 'help':'Calibration constant',},
 
     {'key':'dtau',      'required':False, 'type':(int, float), 'default':0.5,  'validate':(lambda x: (x>0.0)), 'help':'Pressure relaxation',},
     {'key':'ustar',     'required':True,  'type':(int, float), 'default':0.5,  'validate':(lambda x: (x>0.0)), 'help':'Inflow friction velocity',},
@@ -1109,12 +1134,24 @@ RANSinput = [
     {'key':'L',         'required':True,  'type':(int, float), 'default':0.5,  'validate':None, 'help':'Inflow Obukhov length',},
     {'key':'kappa',     'required':False,  'type':(int, float), 'default':0.42, 'validate':(lambda x: (x>0.0)), 'help':'von Karman constant',},
     {'key':'z0',        'required':True,  'type':(int, float), 'default':0.1,  'validate':(lambda x: (x>0.0)), 'help':'Surface roughness',},
+    {'key':'zlo',       'required':False,  'type':None, 'default':None,  'validate':None, 'help':'Same as mesh zmin',},
 
     {'key':'Tw',        'required':True,  'type':(int, float), 'default':300,  'validate':(lambda x: (x>0.0)), 'help':'Surface temperature',},
     {'key':'beta',      'required':True,  'type':(int, float), 'default':1.0/300.0,  'validate':(lambda x: (x>0.0)), 'help':'Volumetric expansion',},
     {'key':'Tref',      'required':True,  'type':None,         'default':None,  'validate':None,               'help':'Reference temperature',},
+    {'key':'lapserate', 'required':True,  'type':(int, float), 'default':0.0,   'validate':None,               'help':'Lapse rate',},
 
-    {'key':'turbinelist', 'required':False,  'type':[],   'default':[], 'validate':None, 'help':'List of turbines',},
+    {'key':'veerpermeter',   'required':False,  'type':(int, float), 'default':0.0,  'validate':None, 'help':'Change in veer with elevation [deg/meter]',},
+    {'key':'zeroveerheight', 'required':True,  'type':(int, float), 'default':90.0,  'validate':None, 'help':'Z height where veer is zero',},
+
+    {'key':'Coriolis',       'required':False,  'type':{}, 'default':Coriolisdict, 'validate':None, 'help':'Coriolis parameters',},
+
+    {'key':'turbinelist',  'required':False,  'type':[],   'default':[], 'validate':turbdict,          'help':'List of turbines',},
+
+    {'key':'solveroptions', 'required':False,  'type':{}, 'default':solveopts, 'validate':None, 'help':'Solver options',},
+
+    {'key':'savepklfile',  'required':False,  'type':str,   'default':'', 'validate':None,         'help':'Filename to save results',},
+
 ]
 
 def makemesh(meshparams):
@@ -1144,19 +1181,19 @@ def initPhi(params, yvec, zvec):
     # Set up ABL profile
     UABL = np.zeros(Nz)
     for iz, z in enumerate(zvec):
-        UABL[iz] = SANDwake3D.init_U_ABL(z,params)
+        UABL[iz] = init_U_ABL(z,params)
 
     # Set up veer profile
     veerProf = np.zeros(Nz)
     for i, z in enumerate(zvec):
         veerProf[i] = veerpermeter*(z-zeroveerheight)
 
-    Uprof, Vprof = SANDwake3D.getUVfromUhVeer(UABL, veerProf)
+    Uprof, Vprof = getUVfromUhVeer(UABL, veerProf)
     
     tempT = np.zeros(Nz)
     for i, z in enumerate(zvec):
         #tempT[i] = params['Tw'] + Tpermeter*z
-        tempT[i] = SANDwake3D.init_T_ABL(z, params)
+        tempT[i] = init_T_ABL(z, params)
 
 
     Uinit  = np.zeros((Ny, Nz))
@@ -1172,8 +1209,8 @@ def initPhi(params, yvec, zvec):
         Vinit[:, iz] = Vprof[iz]
         Winit[:, iz] = 0.0
     
-        Kinit[:, iz]   = SANDwake3D.init_k_ABL(z,params)*kfactor 
-        EPSinit[:, iz] = SANDwake3D.init_e_ABL(z,params)
+        Kinit[:, iz]   = init_k_ABL(z,params)*kfactor 
+        EPSinit[:, iz] = init_e_ABL(z,params)
         Tinit[:, iz] = tempT[iz]
     
     phiinit = {}
@@ -1185,4 +1222,4 @@ def initPhi(params, yvec, zvec):
     phiinit['eps'] = EPSinit
     phiinit['p'] = pinit
 
-    return phiinit
+    return phiinit, Uprof, Vprof, tempT
