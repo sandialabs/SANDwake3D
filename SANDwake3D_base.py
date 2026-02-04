@@ -8,6 +8,12 @@ import yaml
 import inspect
 import sys
 
+try:
+    import enlighten
+    hasenlighten = True
+except:
+    hasenlighten = False
+
 def solvetridiag(matrow, b, verbose=False):
     """
     Solve tridiagonal system
@@ -169,6 +175,10 @@ def marchSystemBase(phi_init, xvec, dy, dz, params, allbcs, eqnsys,
     for v in varlist:
         phi[v][0,:,:] = phi_init[v]
 
+    if hasenlighten:
+        manager = enlighten.get_manager()
+        pbar = manager.counter(total=len(xvec)-1, desc='Progress', unit='steps')
+
     xprev = xvec[0]
     phiprev = phi_init
     # Start the march
@@ -177,6 +187,8 @@ def marchSystemBase(phi_init, xvec, dy, dz, params, allbcs, eqnsys,
         if verbose:
             print(f'x = {x} dx = {dx}')
         phinext = advanceSys(phiprev, x, dx, dy, dz, params, allbcs, eqnsys, verbose=verbose, maxiter=maxiter, tol=tol, **kwargs)
+        if hasenlighten:
+             pbar.update()
         for v in varlist:
             phi[v][xi+1,:,:] = phinext[v]
         phiprev = phinext.copy()
