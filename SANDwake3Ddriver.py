@@ -13,8 +13,9 @@ for x in extradirs: sys.path.insert(1, x)
 import inputdicthelper as idh
 import SANDwake3D_keps as SANDwake3D
 import SANDwake3D_base as sdb
-
+import time
 import argparse
+import pickle
 
 # ========================================================================
 # Main
@@ -54,11 +55,39 @@ if __name__ == "__main__":
 
     # make the mesh
     params['ym'], params['zm'], xvec, yvec, zvec = SANDwake3D.makemesh(params['mesh'])
-    params['zlo'] = params['mesh']['zmin'] 
-    Ny = len(yvec)
-    Nz = len(zvec)
+    if params['zlo'] is None: params['zlo'] = params['mesh']['zmin']
 
-    
-    print(yvec)
-    print(zvec)
-    print(params)
+
+    phiinit, Uprof, Vprof, tempT = SANDwake3D.initPhi(params, yvec, zvec)
+
+    dy = params['mesh']['dy']
+    dz = params['mesh']['dz']
+    Uinit = phiinit['u']
+
+    solveopts = params['solveroptions']
+    print(solveopts)
+
+    # March the RANS system
+    start_time = time.time()
+    phi = SANDwake3D.marchSystem(phiinit, xvec, dy, dz, params, 
+                                 SANDwake3D.getTypicalWMBC(Uinit[0,-1], tempT, 
+                                                           veerBC=Vprof, dTdz=params['lapserate'],
+                                                           uBC_y=Uprof),
+                                 SANDwake3D.kepsT_eqns, 
+                                 advanceSys=SANDwake3D.advanceSystemKEPS,
+                                 **solveopts,
+                                 #verbose=2, maxiter=100, tol=1.0E-4,
+                                 )
+    end_time = time.time()
+    execution_time = end_time - start_time
+    print(f"Execution time: {execution_time:.4f} seconds")
+
+    savepklfile = params['savepklfile'] 
+    if len(savepklfile)>0:
+        db={'params':params, 'xvec':xvec, 'phi':phi}
+        dbfile = open(savepklfile, 'wb')
+        pickle.dump(db, dbfile, protocol=2)
+        dbfile.close()
+        print(f'Saved to {savepklfile}')
+
+
