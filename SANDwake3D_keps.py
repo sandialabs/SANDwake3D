@@ -1107,6 +1107,7 @@ turbdict = [
     {'key':'turbnormal',  'required':False, 'type':[], 'default':[-1.0, 0.0, 0.0], 'validate':None,               'help':'Turbine rotor normal (facing upstream)',},
     {'key':'Ct',       'required':True, 'type':None, 'default':0.80, 'validate':None,                             'help':'Turbine Ct',},
     {'key':'power',    'required':True, 'type':None, 'default':1000.0, 'validate':None,                           'help':'Turbine power',},
+    {'key':'WS',       'required':False, 'type':None, 'default':0.0, 'validate':None,                             'help':'Wind speed table',},
     {'key':'Rdelta',   'required':True, 'type':(int, float), 'default':24.0, 'validate':(lambda x: (x>0)),        'help':'Turbine tip sharpness',},
     {'key':'turbfunc', 'required':False,  'type':str,        'default':'SANDwake3D_base.UnifCtADM',  'validate':None,         'help':'Turbine function type',},    
 ]
