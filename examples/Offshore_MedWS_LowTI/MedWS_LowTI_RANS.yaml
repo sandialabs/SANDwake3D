@@ -31,13 +31,19 @@ Tw: 283.3                               # Surface temperature [Required: True, d
 beta: 0.00352982703847511471            # Volumetric expansion [Required: True, default: 0.0033333333333333335]
 Tref:                                   # Reference temperature [Required: True, default: None]
 lapserate: 0.002                        # Lapse rate [Required: True, default: 0.0]
-veerpermeter: 0.05                      # Change in veer with elevation [deg/meter] [Required: False, default: 0.0]
-zeroveerheight: 150.0                   # Z height where veer is zero [Required: True, default: 90.0]
+#veerpermeter: 0.05                      # Change in veer with elevation [deg/meter] [Required: False, default: 0.0]
+#zeroveerheight: 150.0                   # Z height where veer is zero [Required: True, default: 90.0]
 
 Coriolis:                               # Coriolis parameters [Required: False, default: {}]
   latitude: 39.55                       # Latitude in degrees [Required: True, default: 0.0]
   rotperiod: 86164.091                  # Earth rotational period [Required: False, default: 86164.091]
 
+inflow:                                 # Inflow parameters [Required: False, default: {}]
+  initTprof: MO                         # Initial temp profile [Required: False, default: 'MO']
+  initVeerprof: linear                  # Initial veer profile [Required: False, default: 'linear']
+  veerpermeter: 0.05                    # Change in veer with elevation [deg/meter] [Required: False, default: 0.0]
+  zeroveerheight: 150.0                 # Z height where veer is zero [Required: True, default: 90.0]
+  
 turbinelist:                            # List of turbines [Required: False, default: []]
   - name: 'T0'
     turbx: 120.0      # Turbine x location

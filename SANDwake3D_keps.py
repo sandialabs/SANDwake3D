@@ -1,5 +1,13 @@
 #!/usr/bin/env python
 
+import os, sys
+scriptpath = os.path.dirname(os.path.realpath(__file__))
+extradirs = [scriptpath, 
+             os.path.join(scriptpath, 'submodules/inputdicthelper/'),
+            ]
+for x in extradirs: sys.path.insert(1, x)
+
+import inputdicthelper as idh
 import copy
 from collections import OrderedDict
 import numpy as np
@@ -1094,8 +1102,14 @@ Coriolisdict = [
 solveopts = [
     {'key':'verbose',  'required':False, 'type':int, 'default':1, 'validate':(lambda x: (x>=0)),  'help':'Solver verbosity level (0, 1, or 2)',},
     {'key':'maxiter',  'required':False, 'type':int, 'default':100, 'validate':(lambda x: (x>0)), 'help':'Number of solver iterations',},
-    {'key':'tol',      'required':False, 'type':(int, float), 'default':1.0E-4, 'validate':(lambda x: (x>0.0)), 'help':'Solver convergence tolerance',},
-    
+    {'key':'tol',      'required':False, 'type':(int, float), 'default':1.0E-4, 'validate':(lambda x: (x>0.0)), 'help':'Solver convergence tolerance',},   
+]
+
+inflowdict = [
+    {'key':'initTprof',      'required':False,  'type':str,         'default':'MO',  'validate':None,             'help':'Initial temp profile',},
+    {'key':'initVeerprof',   'required':False,  'type':str,         'default':'linear',  'validate':None,         'help':'Initial veer profile',},
+    {'key':'veerpermeter',   'required':False,  'type':(int, float), 'default':0.0,  'validate':None, 'help':'Change in veer with elevation [deg/meter]',},
+    {'key':'zeroveerheight', 'required':True,  'type':(int, float), 'default':90.0,  'validate':None, 'help':'Z height where veer is zero',},
 ]
 
 turbdict = [
@@ -1142,13 +1156,16 @@ RANSinput = [
     {'key':'Tref',      'required':True,  'type':None,         'default':None,  'validate':None,               'help':'Reference temperature',},
     {'key':'lapserate', 'required':True,  'type':(int, float), 'default':0.0,   'validate':None,               'help':'Lapse rate',},
 
-    {'key':'veerpermeter',   'required':False,  'type':(int, float), 'default':0.0,  'validate':None, 'help':'Change in veer with elevation [deg/meter]',},
-    {'key':'zeroveerheight', 'required':True,  'type':(int, float), 'default':90.0,  'validate':None, 'help':'Z height where veer is zero',},
-
+    # Coriolis options
     {'key':'Coriolis',       'required':False,  'type':{}, 'default':Coriolisdict, 'validate':None, 'help':'Coriolis parameters',},
 
+    # Inflow options
+    {'key':'inflow',       'required':False,  'type':{}, 'default':inflowdict, 'validate':None, 'help':'Inflow parameters',},
+
+    # Turbine list
     {'key':'turbinelist',  'required':False,  'type':[],   'default':[], 'validate':turbdict,          'help':'List of turbines',},
 
+    # Solver options
     {'key':'solveroptions', 'required':False,  'type':{}, 'default':solveopts, 'validate':None, 'help':'Solver options',},
 
     {'key':'savepklfile',  'required':False,  'type':str,   'default':'', 'validate':None,         'help':'Filename to save results',},
@@ -1172,8 +1189,8 @@ def makemesh(meshparams):
 def initPhi(params, yvec, zvec):
     """
     """
-    veerpermeter   = params['veerpermeter']
-    zeroveerheight = params['zeroveerheight']
+    veerpermeter   = params['inflow']['veerpermeter']
+    zeroveerheight = params['inflow']['zeroveerheight']
     kfactor        = params['Ck']
     
     Ny = len(yvec)
@@ -1193,8 +1210,11 @@ def initPhi(params, yvec, zvec):
     
     tempT = np.zeros(Nz)
     for i, z in enumerate(zvec):
-        #tempT[i] = params['Tw'] + Tpermeter*z
-        tempT[i] = init_T_ABL(z, params)
+        if params['inflow']['initTprof'] == 'linear':
+            Tpermeter = params['lapserate']
+            tempT[i] = params['Tw'] + Tpermeter*z
+        else:
+            tempT[i] = init_T_ABL(z, params)
 
 
     Uinit  = np.zeros((Ny, Nz))
