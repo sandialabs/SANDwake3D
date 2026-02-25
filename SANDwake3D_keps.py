@@ -1102,7 +1102,9 @@ Coriolisdict = [
 solveopts = [
     {'key':'verbose',  'required':False, 'type':int, 'default':1, 'validate':(lambda x: (x>=0)),  'help':'Solver verbosity level (0, 1, or 2)',},
     {'key':'maxiter',  'required':False, 'type':int, 'default':100, 'validate':(lambda x: (x>0)), 'help':'Number of solver iterations',},
-    {'key':'tol',      'required':False, 'type':(int, float), 'default':1.0E-4, 'validate':(lambda x: (x>0.0)), 'help':'Solver convergence tolerance',},   
+    {'key':'tol',      'required':False, 'type':(int, float), 'default':1.0E-4, 'validate':(lambda x: (x>0.0)), 'help':'Solver convergence tolerance',},
+    {'key':'freezevar','required':False, 'type':(int, float), 'default':0.0, 'validate':(lambda x: (x>=0.0)), 'help':'Freeze variable solutions',},   
+
 ]
 
 inflowdict = [

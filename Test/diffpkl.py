@@ -6,10 +6,14 @@ import pickle
 import argparse
 
 import sys, os
+scriptpath = os.path.dirname(os.path.realpath(__file__))
+basepath   = os.path.dirname(scriptpath)
 curdir = os.getcwd()
 extradirs = ['../', '../../',
              '../../SANDwake3D',
              os.path.dirname(curdir),
+             scriptpath,
+             basepath,
             ]
 for x in extradirs: sys.path.insert(1, x)
 
