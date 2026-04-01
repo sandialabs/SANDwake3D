@@ -66,6 +66,12 @@ if __name__ == "__main__":
         nargs='?',
         type=str,
     )
+    group1.add_argument(
+        '--verbose', '-v',
+        action='count',
+        default=-1, # Set the default to 0
+        help='Override verbosity in input file (specify multiple times for more verbosity)'
+    )
     group2.add_argument(
         '--printinputs',
         help="print the yaml inputs",
@@ -81,6 +87,7 @@ if __name__ == "__main__":
         
     args      = parser.parse_args()
     inputfile = args.inputfile
+    verbose   = args.verbose
 
     # Update the documentation
     if args.makedocs:
@@ -94,6 +101,10 @@ if __name__ == "__main__":
 
     # load the input yaml file
     params = inputs.ingestyaml(inputfile, checkunused=False)
+
+    # Adjust verbosity (if necessary)
+    if verbose > -1:
+        params['solveroptions']['verbose'] = verbose
 
     # make the mesh
     params['ym'], params['zm'], xvec, yvec, zvec = SANDwake3D.makemesh(params['mesh'])
