@@ -17,6 +17,34 @@ import time
 import argparse
 import pickle
 
+docdir='docs'
+
+def makedocs(docdir=docdir):
+    """
+    Create the README documentation 
+    """
+    readmefile = 'README.md'
+
+    readmeheader = """
+# SANDwake3D input file
+
+## Input file documentation
+
+Here is the list of all possible inputs
+```yaml
+"""
+    # Create the file
+    os.makedirs(docdir, exist_ok=True)
+    with open(os.path.join(docdir, readmefile), 'w') as f:
+        f.write(readmeheader)
+
+        # Write the input file docs
+        inputs    = idh.inputdict(SANDwake3D.RANSinput, globalhelp="SANDwake3D inputs")
+        inputs.dumpyaml(f)
+        f.write('```')
+        f.write('\n')    
+    return
+
 # ========================================================================
 # Main
 # ========================================================================
@@ -30,14 +58,23 @@ if __name__ == "__main__":
     # Handle arguments
     parser     = argparse.ArgumentParser(description=helpstring,
                                          formatter_class=argparse.RawDescriptionHelpFormatter,)
-    parser.add_argument(
+    group1     = parser.add_argument_group('Normal input')
+    group2     = parser.add_argument_group('Output documentation')
+    group1.add_argument(
         "inputfile",
         help="input yaml file",
+        nargs='?',
         type=str,
     )
-    parser.add_argument(
+    group2.add_argument(
         '--printinputs',
         help="print the yaml inputs",
+        default=False,
+        action='store_true',
+    )
+    group2.add_argument(
+        '--makedocs',
+        help=f"Update the documentation in {docdir}",
         default=False,
         action='store_true',
     )
@@ -45,6 +82,11 @@ if __name__ == "__main__":
     args      = parser.parse_args()
     inputfile = args.inputfile
 
+    # Update the documentation
+    if args.makedocs:
+        makedocs()
+        sys.exit(0)
+    
     # Dump inputs if requested
     if args.printinputs:
         inputs.dumpyaml(sys.stdout)
