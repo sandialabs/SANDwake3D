@@ -302,6 +302,7 @@ def PowerTableLookup(Uinf, params):
     return np.interp(Uinf, wind_speeds, powertable, left=0.0, right=0.0)   
 
 
+# THIS IS OBSOLETE, DELETE SOON!
 def tanhADM(dx, y,z, Uinf, phi, params):
     """
     A uniformly loaded actuator disk
@@ -340,3 +341,143 @@ def UnifCtADM(dx, y,z, Uinf, phi, params):
     turbdat= {'name':params['name'],'Ct':Ct, 'power':power}
     return forces, turbdat
 
+## ---- Joukowski disk routines ----
+# See reference:
+# Jens Nørkær Sørensen, Karl Nilsson, Stefan Ivanell, Henrik Asmuth,
+# Robert Flemming Mikkelsen, "Analytical body forces in numerical
+# actuator disc model of wind turbines", Renewable Energy, Volume 147,
+# Part 1, 2020, Pages 2259-2271,
+# https://doi.org/10.1016/j.renene.2019.09.134
+
+
+def RPMTableLookup(Uinf, params):
+    """
+    Return the rpm value based on inputs from the params dictionary
+    Options:
+      -  if params['rpm'] is scalar, return that
+      -  if params['rpm'] is list, return interpolated value from params['WS'] and params['rpm'] 
+    """
+    rpm = params['rpm']
+    # If it's a scalar value, just return that
+    if isinstance(rpm, float) or isinstance(rpm, int):
+        return rpm
+    wind_speeds = params['WS']
+    return np.interp(Uinf, wind_speeds, rpm, left=0.0, right=0.0)
+
+def rpm2tsr(rpm, R, Uinf):
+    """
+    Convert RPM to tip speed ratio
+    """
+    omega = rpm/60.0*(2.0*np.pi)
+    return omega*R/Uinf
+
+def gfunc(r, rdelta, a, b):
+    """
+    Root load correction
+    See equation (10) in Sorensen (2020)
+    """
+    g = 1.0 - np.exp(-a*(r/rdelta)**b)
+    return g
+
+def Ffunc(r, bladeR, Nb, TSR):
+    """
+    Tip loading correction
+    See equation (9) in Sorensen (2020)
+    """
+    x = r/bladeR
+    exparg = np.exp(-0.5*Nb*np.sqrt(1+TSR*TSR)*(1.0-x))
+    F = 2.0/np.pi*np.arccos(exparg)
+    return F
+
+
+def integrate_a1(rdelta, bladeR, TSR, a, b, Nb, Nr=1000):
+    """
+    Compute the a1 integral
+    """
+    x = np.linspace(0, 1.0, Nr)[1:]
+    g = gfunc(x, rdelta/bladeR, a, b)
+    F = Ffunc(x, 1.0, Nb, TSR)
+    integrand = g*g*F*F/x
+    return np.trapz(integrand, x)
+
+def integrate_a2(rdelta, bladeR, TSR, a, b, Nb, Nr=1000):
+    """
+    Compute the a1 integral
+    """
+    x = np.linspace(0, 1.0, Nr)
+    g = gfunc(x, rdelta/bladeR, a, b)
+    F = Ffunc(x, 1.0, Nb, TSR)
+    integrand = g*F*x   
+    return np.trapz(integrand, x)
+
+
+def get_q0(Ct, rdelta, bladeR, TSR, a, b, Nb):
+    """
+    Compute q0
+    """
+    a1 = integrate_a1(rdelta, bladeR, TSR, a, b, Nb)
+    a2 = integrate_a2(rdelta, bladeR, TSR, a, b, Nb)
+    q0 = (np.sqrt(16*TSR*TSR*a2*a2 + 8*a1*Ct) - 4.0*TSR*a2)/(4.0*a1)
+    return q0
+
+def fz_func(x, q0, g, F, TSR):
+    """
+    Compute fz
+    """
+    return q0*g*F/x*(TSR*x + 0.5*q0*g*F/x)
+
+def get_bladeloading(rvec, rpm, Ct, Uinf, bladeR, rdelta, a, b, Nb,
+                     TSRoverride=None):
+    """
+    Compute blade loading functions F_z and F_theta
+    """
+    if TSRoverride is not None:
+        TSR = TSRoverride
+    else:
+        TSR = rpm2tsr(rpm, bladeR, Uinf)
+    q0   = get_q0(Ct, rdelta, bladeR, TSR, a, b, Nb)
+    xvec = rvec/bladeR
+    gvec = gfunc(rvec, rdelta, a, b)
+    Fvec = Ffunc(rvec, bladeR, Nb, TSR)
+    Fz   = fz_func(xvec, q0, gvec, Fvec, TSR)
+    Fth  = None
+    return Fz, Fth
+    
+
+def JoukowskiADM(dx, y,z, Uinf, phi, params):
+    """
+    A Joukowski actuator disk
+    """
+    zhh    = params['zhh']
+    yhh    = params['turby']
+    Rdelta = params['Rdelta']
+    turbR  = params['turbD']*0.5
+    turbnormal = params['turbnormal'] if 'turbnormal' in params else [-1.0, 0.0, 0.0]
+    Ct     = CtTableLookup(Uinf, params)
+    rpm    = RPMTableLookup(Uinf, params)
+
+    a      = params['aparam']
+    b      = params['bparam']
+
+    rvec   = np.sqrt((y-yhh)**2 + (z-zhh)**2)
+    Ulocal = np.sqrt(phi['u']**2 + phi['v']**2)
+    power  = 1000.3  # FIX!!
+    rho    = 1.0 # FIX!!!
+
+    #a = 1.256
+    #b = 2.0
+    #a = 2.335
+    #b = 4.0
+    Nb = 3
+    fz, _ = get_bladeloading(rvec, rpm, Ct, Uinf, turbR, Rdelta, a, b, Nb)
+    rmask = (rvec > turbR)
+    fz[rmask] = 0.0
+    
+    Faxial = fz*(rho*Ulocal**2)/dx      # Force on disk
+    
+    Fx     = turbnormal[0]*Faxial
+    Fy     = turbnormal[1]*Faxial
+    Fz     = turbnormal[2]*Faxial
+    forces = {'u':Fx, 'v':Fy, 'w':Fz}
+    turbdat= {'name':params['name'],'Ct':Ct, 'power':power}
+    return forces, turbdat
