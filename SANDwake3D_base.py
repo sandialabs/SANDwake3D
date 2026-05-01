@@ -426,6 +426,12 @@ def fz_func(x, q0, g, F, TSR):
     """
     return q0*g*F/x*(TSR*x + 0.5*q0*g*F/x)
 
+def fth_func(x, q0, g, F, uDratio):
+    """
+    Compute f_theta
+    """
+    return uDratio*q0*g*F/x
+
 def get_bladeloading(rvec, rpm, Ct, Uinf, bladeR, rdelta, a, b, Nb,
                      TSRoverride=None):
     """
@@ -435,12 +441,13 @@ def get_bladeloading(rvec, rpm, Ct, Uinf, bladeR, rdelta, a, b, Nb,
         TSR = TSRoverride
     else:
         TSR = rpm2tsr(rpm, bladeR, Uinf)
+    uDratio = 0.5*(1.0 + np.sqrt(1.0-Ct))
     q0   = get_q0(Ct, rdelta, bladeR, TSR, a, b, Nb)
     xvec = rvec/bladeR
     gvec = gfunc(rvec, rdelta, a, b)
     Fvec = Ffunc(rvec, bladeR, Nb, TSR)
     Fz   = fz_func(xvec, q0, gvec, Fvec, TSR)
-    Fth  = None
+    Fth  = fth_func(xvec, q0, gvec, Fvec, uDratio)
     return Fz, Fth
     
 
@@ -462,22 +469,38 @@ def JoukowskiADM(dx, y,z, Uinf, phi, params):
     rvec   = np.sqrt((y-yhh)**2 + (z-zhh)**2)
     Ulocal = np.sqrt(phi['u']**2 + phi['v']**2)
     power  = 1000.3  # FIX!!
-    rho    = 1.0 # FIX!!!
+    rho    = 1.00 # FIX!!!
 
+    rvecy  = (y-yhh)/rvec
+    rvecz  = (z-zhh)/rvec
+    rvecx  = np.zeros_like(rvecy)
+
+    thatx  = np.zeros_like(rvecx)
+    thaty  = np.zeros_like(rvecx)
+    thatz  = np.zeros_like(rvecx)
+    for i, _ in np.ndenumerate(thatx):
+        rhat = np.array([rvecx[i], rvecy[i], rvecz[i]])
+        that = np.cross(rhat, np.array(turbnormal))
+        thatx[i] = that[0]
+        thaty[i] = that[1]
+        thatz[i] = that[2]
     #a = 1.256
     #b = 2.0
     #a = 2.335
     #b = 4.0
+    #Nb = 3
     Nb = 3
-    fz, _ = get_bladeloading(rvec, rpm, Ct, Uinf, turbR, Rdelta, a, b, Nb)
+    fz, fth = get_bladeloading(rvec, rpm, Ct, Uinf, turbR, Rdelta, a, b, Nb)
     rmask = (rvec > turbR)
     fz[rmask] = 0.0
+    fth[rmask] = 0.0
     
-    Faxial = fz*(rho*Ulocal**2)/dx      # Force on disk
+    Faxial = fz*(rho*Ulocal**2)/dx       # Force on disk
+    Fazi   = fth*(rho*Ulocal**2)/dx      # Force on disk
     
-    Fx     = turbnormal[0]*Faxial
-    Fy     = turbnormal[1]*Faxial
-    Fz     = turbnormal[2]*Faxial
+    Fx     = turbnormal[0]*Faxial + thatx*Fazi
+    Fy     = turbnormal[1]*Faxial + thaty*Fazi
+    Fz     = turbnormal[2]*Faxial + thatz*Fazi
     forces = {'u':Fx, 'v':Fy, 'w':Fz}
     turbdat= {'name':params['name'],'Ct':Ct, 'power':power}
     return forces, turbdat
