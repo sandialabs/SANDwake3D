@@ -6,14 +6,14 @@ A three-dimensional parabolic RANS wake modeling tool.
 
 
 ```bash
-git clone --recursive git@github.com:lawrenceccheung/SANDwake3D.git
+git clone --recursive git@github.com:sandialabs/SANDwake3D.git
 ```
 
 ### Required and optional libraries
 
 SANDwake3D will run on any python3 system with numpy and scipy libraries installed.
 
-An optional library that can be used in SANDwake3D is the [Enlighten progress bar](https://pypi.org/project/enlighten/), documentation available on [readthedocs](https://python-enlighten.readthedocs.io/en/stable/).
+An optional library that can be used in SANDwake3D is the [Enlighten progress bar](https://pypi.org/project/enlighten/), with documentation available on how tuse it on [readthedocs](https://python-enlighten.readthedocs.io/en/stable/).
 
 ## Running an example problem
 
