@@ -542,7 +542,7 @@ def advanceSystemKEPS(
             phi_tilde["v"], dy, dz, edge_order=1
         )
         aux_vars["dy_w"], aux_vars["dz_w"] = np.gradient(
-            phi_tilde["v"], dy, dz, edge_order=1
+            phi_tilde["w"], dy, dz, edge_order=1
         )
         aux_vars["dy_p"], aux_vars["dz_p"] = np.gradient(
             phi_tilde["p"], dy, dz, edge_order=1
